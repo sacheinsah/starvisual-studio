@@ -51,6 +51,8 @@ const verifyOtpBtn=document.getElementById('verifyOtpBtn');
 const otpStep=document.getElementById('otpStep');
 let phoneMode='email-login', pendingPhone='', authMethod='email';
 
+[loginForm,signupForm].forEach(form=>form?.addEventListener('invalid',()=>setAuthStatus('Please enter a valid email and complete all required fields.',true),true));
+
 phoneMethod?.remove();
 document.querySelector('.auth-divider')?.remove();
 document.querySelector('.auth-sub')?.replaceChildren(document.createTextNode('Sign in or create your account with your email and password.'));
@@ -212,14 +214,15 @@ signupForm?.addEventListener('submit',async e=>{
   setAuthBusy(signupForm,true,'Creating account');setAuthStatus('Creating your secure account…');
   let data,error;
   try{
-    ({data,error}=await withAuthTimeout(db.auth.signUp({email,password,options:{data:{full_name:name}}})));
+    const emailRedirectTo=location.origin==='null'?undefined:`${location.origin}${location.pathname}`;
+    ({data,error}=await withAuthTimeout(db.auth.signUp({email,password,options:{data:{full_name:name},...(emailRedirectTo?{emailRedirectTo}: {})}})));
   }catch(requestError){setAuthStatus(friendlyError(requestError),true);return}
   finally{setAuthBusy(signupForm,false)}
   if(error){setAuthStatus(friendlyError(error),true);return}
   if(data.session){
     localStorage.setItem('starVisualsAuthPrompted','1'); closeAuth(); toast('Account created. Welcome to STAR VISUALS.'); await loadStudio();
     if(location.pathname.endsWith('login.html'))location.href='dashboard.html';
-  }else setAuthStatus('Account created. Check your email to confirm it, then log in.');
+  }else setAuthStatus('Account created. Check your inbox and spam folder for the Supabase confirmation email, then return here to log in.');
 });
 
 document.querySelectorAll('video.showreel').forEach(v=>v.addEventListener('error',()=>{v.hidden=true;v.nextElementSibling?.removeAttribute('hidden')}));
@@ -248,7 +251,22 @@ document.querySelector('[data-close-course]')?.addEventListener('click',closeCou
 document.querySelector('[data-course-signup]')?.addEventListener('click',()=>{closeCourse();openAuth('phone-signup')});
 function animateSocialCounters(){document.querySelectorAll('.social-count').forEach((node)=>{const target=Number(node.dataset.base||0);const format=(value)=>{if(value>=1000000)return `${(value/1000000).toFixed(1)}M+`;if(value>=1000)return `${(value/1000).toFixed(value>=100000?0:1)}K+`;return `${Math.round(value)}+`};const started=performance.now();const duration=1400;const step=(now)=>{const progress=Math.min(1,(now-started)/duration);const eased=1-Math.pow(1-progress,3);node.textContent=format(target*eased);if(progress<1)requestAnimationFrame(step)};requestAnimationFrame(step);});}
 async function loadStudio(){if(!db)return;const {data:{session}}=await db.auth.getSession();updateHeaderAuth(session);const locked=document.getElementById('accountLocked'),dash=document.getElementById('accountDashboard');if(!locked&&!dash)return;if(!session?.user){locked?.classList.remove('hidden');dash?.classList.add('hidden');return}locked?.classList.add('hidden');dash?.classList.remove('hidden');const u=session.user;const {data:profile}=await db.from('profiles').select('full_name,email,created_at').eq('id',u.id).maybeSingle();const name=profile?.full_name||u.user_metadata?.full_name||'Creator';const contact=u.phone||profile?.email||u.email||'—';document.getElementById('dashAvatar').textContent=initials(name);document.getElementById('dashName').textContent=name;document.getElementById('dashContact').textContent=contact;document.getElementById('profileName').textContent=name;document.getElementById('profileContact').textContent=contact;document.getElementById('profileDate').textContent=profile?.created_at?new Date(profile.created_at).toLocaleDateString('en-IN'):'—';const pr=await db.from('course_purchases').select('id,status,progress,purchased_at,course:courses(title,duration,delivery)').eq('user_id',u.id).in('status',['paid']).order('created_at',{ascending:false});const box=document.getElementById('coursePurchases');if(pr.error)box.innerHTML='<span>!</span><p>Could not load your courses right now.</p>';else if(!pr.data?.length)box.innerHTML='<span>✦</span><p>No purchased courses yet.</p><a class="text-button" href="courses.html">Explore courses →</a>';else box.innerHTML=pr.data.map(i=>`<div class="purchased-course"><strong>${escapeHtml(i.course?.title||'Course')}</strong><span>${escapeHtml(i.course?.duration||'STAR VISUALS course')}</span><div class="progress"><i style="width:${Math.max(0,Math.min(100,Number(i.progress||0)))}%"></i></div><small>${Number(i.progress||0)}% complete · ${escapeHtml(i.status)}</small></div>`).join('');const dr=await db.from('editing_deals').select('project_name,package_name,amount_inr,status,updated_at').eq('user_id',u.id).order('updated_at',{ascending:false}).limit(1).maybeSingle();const d=dr.data;document.getElementById('dealStatus').textContent=d?.status?d.status.replace('_',' '):'No active deal';document.getElementById('dealProject').textContent=d?.project_name||'—';document.getElementById('dealPackage').textContent=d?.package_name||'—';document.getElementById('dealAmount').textContent=d?.amount_inr!=null?`₹${Number(d.amount_inr).toLocaleString('en-IN')}`:'—'}
-document.getElementById('logoutBtn')?.addEventListener('click',async()=>{if(db){await db.auth.signOut();toast('You have been signed out.');await loadStudio()}});
+document.getElementById('logoutBtn')?.addEventListener('click',async()=>{
+  const button=document.getElementById('logoutBtn');
+  if(!db||button?.disabled)return;
+  if(button)button.disabled=true;
+  try{
+    await withAuthTimeout(db.auth.signOut({scope:'local'}));
+    localStorage.removeItem('starVisualsAuthPrompted');
+    updateHeaderAuth(null);
+    document.getElementById('accountLocked')?.classList.remove('hidden');
+    document.getElementById('accountDashboard')?.classList.add('hidden');
+    location.href='login.html?logged-out=1';
+  }catch(error){
+    if(button)button.disabled=false;
+    toast(friendlyError(error));
+  }
+});
 
 const projectForm=document.getElementById('projectForm');
 const projectStatus=document.getElementById('projectStatus');

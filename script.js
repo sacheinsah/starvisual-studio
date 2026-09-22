@@ -60,6 +60,8 @@ document.querySelectorAll('.auth-tabs button').forEach((button,index)=>{
 });
 
 function setAuthStatus(m,err=false){if(authStatus){authStatus.textContent=m;authStatus.classList.toggle('error',err)}}
+function setAuthBusy(form,busy,label){const button=form?.querySelector('button[type="submit"]');if(!button)return;button.disabled=busy;if(busy){button.dataset.defaultLabel=button.innerHTML;button.innerHTML=`${label} <span>...</span>`;}else if(button.dataset.defaultLabel){button.innerHTML=button.dataset.defaultLabel;delete button.dataset.defaultLabel;}}
+async function withAuthTimeout(request){let timer;try{return await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Authentication is taking too long. Check your internet connection and try again.')),15000)})])}finally{clearTimeout(timer)}}
 function showPasswordUpdate(){
   overlay?.classList.add('open'); overlay?.setAttribute('aria-hidden','false'); document.body.classList.add('modal-open');
   loginForm?.classList.add('hidden'); signupForm?.classList.add('hidden'); resetForm?.classList.add('hidden'); updatePasswordForm?.classList.remove('hidden');
@@ -156,11 +158,12 @@ loginForm?.addEventListener('submit',async e=>{
   e.preventDefault();
   if(!db){setAuthStatus(authUnavailableMessage,true);return}
   const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
-  setAuthStatus('Signing you in…');
+  setAuthBusy(loginForm,true,'Signing in');setAuthStatus('Signing you in…');
   try{
-    const {error}=await db.auth.signInWithPassword({email,password});
+    const {error}=await withAuthTimeout(db.auth.signInWithPassword({email,password}));
     if(error){setAuthStatus(friendlyError(error),true);return}
   }catch(error){setAuthStatus(friendlyError(error),true);return}
+  finally{setAuthBusy(loginForm,false)}
   localStorage.setItem('starVisualsAuthPrompted','1'); closeAuth(); toast('Signed in — your My Studio is connected.'); await loadStudio();
   if(location.pathname.endsWith('login.html')){const r=new URLSearchParams(location.search).get('returnTo');location.href=r?decodeURIComponent(r):'dashboard.html';}
 });
@@ -206,11 +209,12 @@ signupForm?.addEventListener('submit',async e=>{
   if(!name){setAuthStatus('Please enter your full name.',true);return}
   if(password.length<6){setAuthStatus('Your password must be at least 6 characters.',true);return}
   if(password!==confirmation){setAuthStatus('Your passwords do not match.',true);return}
-  setAuthStatus('Creating your secure account…');
+  setAuthBusy(signupForm,true,'Creating account');setAuthStatus('Creating your secure account…');
   let data,error;
   try{
-    ({data,error}=await db.auth.signUp({email,password,options:{data:{full_name:name}}}));
+    ({data,error}=await withAuthTimeout(db.auth.signUp({email,password,options:{data:{full_name:name}}})));
   }catch(requestError){setAuthStatus(friendlyError(requestError),true);return}
+  finally{setAuthBusy(signupForm,false)}
   if(error){setAuthStatus(friendlyError(error),true);return}
   if(data.session){
     localStorage.setItem('starVisualsAuthPrompted','1'); closeAuth(); toast('Account created. Welcome to STAR VISUALS.'); await loadStudio();

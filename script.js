@@ -1,3 +1,10 @@
+const adminStatus=document.getElementById('adminStatus');
+const adminRequests=document.getElementById('adminRequests');
+function setAdminStatus(message,error=false){if(adminStatus){adminStatus.textContent=message;adminStatus.classList.toggle('error',error)}}
+function adminRequestCard(request,profile){let details={};try{details=JSON.parse(request.notes||'{}')}catch{}const contact=details.email||profile?.email||'No email provided';const phone=details.phone||'No phone provided';return `<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(request.project_name)}</span><h3>${escapeHtml(request.package_name||'Editing request')}</h3></div><select class="admin-status-select" data-request-id="${request.id}" aria-label="Update request status"><option value="enquiry" ${request.status==='enquiry'?'selected':''}>Enquiry</option><option value="confirmed" ${request.status==='confirmed'?'selected':''}>Confirmed</option><option value="in_progress" ${request.status==='in_progress'?'selected':''}>In progress</option><option value="review" ${request.status==='review'?'selected':''}>Review</option><option value="completed" ${request.status==='completed'?'selected':''}>Completed</option><option value="cancelled" ${request.status==='cancelled'?'selected':''}>Cancelled</option></select></div><div class="admin-request-grid"><div><span>CLIENT</span><strong>${escapeHtml(details.full_name||profile?.full_name||'Unknown')}</strong><small>${escapeHtml(contact)}<br>${escapeHtml(phone)}</small></div><div><span>PROJECT</span><strong>${escapeHtml(details.platform||'Platform not specified')}</strong><small>${escapeHtml(details.video_duration||'Duration not specified')} · ${escapeHtml(details.style||'Style not specified')}</small></div><div><span>BUDGET</span><strong>${request.amount_inr?`₹${Number(request.amount_inr).toLocaleString('en-IN')}`:'Not specified'}</strong><small>${request.created_at?new Date(request.created_at).toLocaleDateString('en-IN'):''}</small></div></div><div class="admin-brief"><span>BRIEF</span><p>${escapeHtml(details.brief||request.notes||'No brief provided')}</p>${details.footage_link?`<a href="${escapeHtml(details.footage_link)}" target="_blank" rel="noopener">Open footage link ↗</a>`:''}</div></article>`}
+async function loadAdminRequests(){if(!adminRequests||!db)return;setAdminStatus('Checking administrator access…');adminRequests.innerHTML='<div class="admin-empty">Loading requests…</div>';const {data:{session}}=await db.auth.getSession();if(!session?.user){location.href='login.html?returnTo=admin.html';return}const {data:admin,error:profileError}=await db.from('profiles').select('role').eq('id',session.user.id).maybeSingle();if(profileError||admin?.role!=='admin'){setAdminStatus('Administrator access is required.',true);adminRequests.innerHTML='<div class="admin-empty">This account cannot view project requests.</div>';return}const {data:requests,error}=await db.from('editing_deals').select('id,user_id,project_name,package_name,amount_inr,status,notes,created_at').order('created_at',{ascending:false});if(error){setAdminStatus(friendlyError(error),true);adminRequests.innerHTML='<div class="admin-empty">Requests could not be loaded.</div>';return}const ids=[...new Set((requests||[]).map(request=>request.user_id))];const {data:profiles}=ids.length?await db.from('profiles').select('id,full_name,email').in('id',ids):{data:[]};const profileMap=new Map((profiles||[]).map(profile=>[profile.id,profile]));adminRequests.innerHTML=requests?.length?requests.map(request=>adminRequestCard(request,profileMap.get(request.user_id))).join(''):'<div class="admin-empty">No editing requests yet.</div>';setAdminStatus(`${requests?.length||0} request${requests?.length===1?'':'s'} found.`)}
+document.getElementById('adminRefresh')?.addEventListener('click',loadAdminRequests);
+adminRequests?.addEventListener('change',async event=>{const select=event.target.closest('.admin-status-select');if(!select||!db)return;select.disabled=true;const {error}=await db.from('editing_deals').update({status:select.value}).eq('id',select.dataset.requestId);select.disabled=false;if(error){setAdminStatus(friendlyError(error),true);return}setAdminStatus('Request status updated.')});
 /* STAR VISUALS — shared UI, phone OTP authentication and Supabase data */
 document.body.classList.toggle('services-page-active',Boolean(document.querySelector('.pricing-card')));
 const menu=document.querySelector('.menu'), mobileNav=document.querySelector('.mobile-nav');
@@ -51,6 +58,18 @@ const verifyOtpBtn=document.getElementById('verifyOtpBtn');
 const otpStep=document.getElementById('otpStep');
 let phoneMode='email-login', pendingPhone='', authMethod='email';
 
+if(emailMethod&&!emailMethod.querySelector('[data-google-auth]')){
+  const googleButton=document.createElement('button');
+  googleButton.className='google-auth-btn';
+  googleButton.type='button';
+  googleButton.dataset.googleAuth='';
+  googleButton.innerHTML='<span class="google-mark">G</span><span>Continue with Google</span>';
+  const divider=document.createElement('div');
+  divider.className='auth-divider';
+  divider.innerHTML='<span>or use email</span>';
+  emailMethod.prepend(googleButton,divider);
+}
+
 [loginForm,signupForm].forEach(form=>form?.addEventListener('invalid',()=>setAuthStatus('Please enter a valid email and complete all required fields.',true),true));
 
 phoneMethod?.remove();
@@ -64,6 +83,7 @@ document.querySelectorAll('.auth-tabs button').forEach((button,index)=>{
 function setAuthStatus(m,err=false){if(authStatus){authStatus.textContent=m;authStatus.classList.toggle('error',err)}}
 function setAuthBusy(form,busy,label){const button=form?.querySelector('button[type="submit"]');if(!button)return;button.disabled=busy;if(busy){button.dataset.defaultLabel=button.innerHTML;button.innerHTML=`${label} <span>...</span>`;}else if(button.dataset.defaultLabel){button.innerHTML=button.dataset.defaultLabel;delete button.dataset.defaultLabel;}}
 async function withAuthTimeout(request){let timer;try{return await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Authentication is taking too long. Check your internet connection and try again.')),15000)})])}finally{clearTimeout(timer)}}
+async function continueWithGoogle(){if(!db){setAuthStatus(authUnavailableMessage,true);return}const buttons=[...document.querySelectorAll('[data-google-auth]')];buttons.forEach(button=>{button.disabled=true});setAuthStatus('Connecting to Google…');try{const redirectTo=location.origin==='null'?undefined:`${location.origin}${location.pathname}`;const options=redirectTo?{redirectTo}:{};const {error}=await withAuthTimeout(db.auth.signInWithOAuth({provider:'google',options}));if(error)setAuthStatus(friendlyError(error),true)}catch(error){setAuthStatus(friendlyError(error),true)}finally{buttons.forEach(button=>{button.disabled=false})}}
 function showPasswordUpdate(){
   overlay?.classList.add('open'); overlay?.setAttribute('aria-hidden','false'); document.body.classList.add('modal-open');
   loginForm?.classList.add('hidden'); signupForm?.classList.add('hidden'); resetForm?.classList.add('hidden'); updatePasswordForm?.classList.remove('hidden');
@@ -117,6 +137,7 @@ document.querySelectorAll('.account-actions a').forEach(link=>link.addEventListe
 }));
 document.querySelectorAll('[data-close-auth]').forEach(b=>b.addEventListener('click',closeAuth));
 document.querySelectorAll('.auth-tabs button').forEach(b=>b.addEventListener('click',()=>switchAuthMode(b.dataset.tab)));
+document.querySelectorAll('[data-google-auth]').forEach(button=>button.addEventListener('click',continueWithGoogle));
 toggleAuthMethod?.addEventListener('click',()=>setAuthMethod(authMethod==='phone'?'email':'phone'));
 overlay?.addEventListener('click',e=>{if(e.target===overlay)closeAuth()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAuth()});
@@ -308,5 +329,5 @@ projectForm?.addEventListener('submit',async e=>{
   setProjectStatus('Project enquiry submitted. You can track the deal from My Studio.');
   toast('Project enquiry sent to STAR VISUALS.');
 });
-async function init(){animateSocialCounters();await loadCoursesFromDatabase();await loadStudio();if(!db)return;db.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showPasswordUpdate();loadStudio()});}
+async function init(){animateSocialCounters();await loadCoursesFromDatabase();await loadStudio();if(adminRequests)await loadAdminRequests();if(!db)return;db.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showPasswordUpdate();loadStudio();if(adminRequests)loadAdminRequests()});}
 init();

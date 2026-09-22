@@ -8,7 +8,11 @@ let toastTimer; function toast(msg){const t=document.getElementById('toast')||((
 function initials(name){return (name||'SV').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'SV'}
 function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function friendlyError(error){const m=error?.message||String(error||'Something went wrong.');if(/invalid login credentials/i.test(m))return'Email or password is incorrect.';if(/email not confirmed/i.test(m))return'Please confirm your email first, then log in.';if(/already registered|user already registered/i.test(m))return'An account with this email already exists. Try logging in.';if(/phone.*not enabled|sms.*provider/i.test(m))return'Phone OTP is not enabled in Supabase yet. Enable Phone auth and an SMS provider first.';return m}
-const cfg=window.STAR_VISUALS_SUPABASE||{}; const supabaseReady=Boolean(window.supabase?.createClient&&cfg.url&&cfg.publishableKey&&!cfg.url.includes('YOUR_SUPABASE')&&!cfg.publishableKey.includes('YOUR_SUPABASE')); const db=supabaseReady?window.supabase.createClient(cfg.url,cfg.publishableKey):null;
+const cfg=window.STAR_VISUALS_SUPABASE||{};
+const validSupabaseUrl=typeof cfg.url==='string'&&/^https:\/\/[^/]+\.supabase\.co\/?$/.test(cfg.url)&&!cfg.url.includes('your-project-id');
+const supabaseReady=Boolean(window.supabase?.createClient&&validSupabaseUrl&&cfg.publishableKey&&!cfg.publishableKey.includes('YOUR_SUPABASE'));
+const db=supabaseReady?window.supabase.createClient(cfg.url,cfg.publishableKey):null;
+const authUnavailableMessage='Supabase is not connected yet. Add your real project URL in supabase-config.js.';
 
 const overlay=document.getElementById('authOverlay');
 const loginForm=document.getElementById('loginForm');
@@ -72,7 +76,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAuth()});
 
 function normalizePhone(v){let s=v.trim().replace(/[\s()-]/g,'');if(/^\d{10}$/.test(s))s='+91'+s;return s}
 async function sendOtp(){
-  if(!db){setAuthStatus('Connect Supabase in supabase-config.js first.',true);return}
+  if(!db){setAuthStatus(authUnavailableMessage,true);return}
   const phone=normalizePhone(document.getElementById('phoneNumber')?.value||'');
   if(!/^\+[1-9]\d{7,14}$/.test(phone)){setAuthStatus('Enter a valid mobile number, for example +91 98765 43210.',true);return}
   pendingPhone=phone; setAuthStatus('Sending your secure one-time code…'); sendOtpBtn.disabled=true;
@@ -107,11 +111,13 @@ document.getElementById('changePhoneBtn')?.addEventListener('click',()=>{otpStep
 
 loginForm?.addEventListener('submit',async e=>{
   e.preventDefault();
-  if(!db){setAuthStatus('Connect Supabase in supabase-config.js first.',true);return}
+  if(!db){setAuthStatus(authUnavailableMessage,true);return}
   const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
   setAuthStatus('Signing you in…');
-  const {error}=await db.auth.signInWithPassword({email,password});
-  if(error){setAuthStatus(friendlyError(error),true);return}
+  try{
+    const {error}=await db.auth.signInWithPassword({email,password});
+    if(error){setAuthStatus(friendlyError(error),true);return}
+  }catch(error){setAuthStatus(friendlyError(error),true);return}
   localStorage.setItem('starVisualsAuthPrompted','1'); closeAuth(); toast('Signed in — your My Studio is connected.'); await loadStudio();
   if(location.pathname.endsWith('login.html')){const r=new URLSearchParams(location.search).get('returnTo');location.href=r?decodeURIComponent(r):'dashboard.html';}
 });
@@ -128,33 +134,40 @@ forgotPasswordBtn?.addEventListener('click',()=>{
 document.getElementById('backToLoginBtn')?.addEventListener('click',()=>switchAuthMode('email-login'));
 resetForm?.addEventListener('submit',async e=>{
   e.preventDefault();
-  if(!db){setAuthStatus('Connect Supabase in supabase-config.js first.',true);return}
+  if(!db){setAuthStatus(authUnavailableMessage,true);return}
   const email=document.getElementById('resetEmail').value.trim();
   setAuthStatus('Sending your password reset link…');
-  const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:`${location.origin}${location.pathname}`});
-  if(error){setAuthStatus(friendlyError(error),true);return}
+  try{
+    const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:`${location.origin}${location.pathname}`});
+    if(error){setAuthStatus(friendlyError(error),true);return}
+  }catch(error){setAuthStatus(friendlyError(error),true);return}
   setAuthStatus('Check your email for a link to create a new password.');
 });
 updatePasswordForm?.addEventListener('submit',async e=>{
   e.preventDefault();
-  if(!db){setAuthStatus('Connect Supabase in supabase-config.js first.',true);return}
+  if(!db){setAuthStatus(authUnavailableMessage,true);return}
   const password=document.getElementById('newPassword').value,confirmation=document.getElementById('newPasswordConfirm').value;
   if(password.length<6){setAuthStatus('Your password must be at least 6 characters.',true);return}
   if(password!==confirmation){setAuthStatus('Your passwords do not match.',true);return}
   setAuthStatus('Updating your password…');
-  const {error}=await db.auth.updateUser({password});
-  if(error){setAuthStatus(friendlyError(error),true);return}
+  try{
+    const {error}=await db.auth.updateUser({password});
+    if(error){setAuthStatus(friendlyError(error),true);return}
+  }catch(error){setAuthStatus(friendlyError(error),true);return}
   updatePasswordForm.reset(); closeAuth(); toast('Your password has been updated.');
 });
 signupForm?.addEventListener('submit',async e=>{
   e.preventDefault();
-  if(!db){setAuthStatus('Connect Supabase in supabase-config.js first.',true);return}
+  if(!db){setAuthStatus(authUnavailableMessage,true);return}
   const name=document.getElementById('signupName').value.trim(),email=document.getElementById('signupEmail').value.trim(),password=document.getElementById('signupPassword').value,confirmation=document.getElementById('signupPasswordConfirm').value;
   if(!name){setAuthStatus('Please enter your full name.',true);return}
   if(password.length<6){setAuthStatus('Your password must be at least 6 characters.',true);return}
   if(password!==confirmation){setAuthStatus('Your passwords do not match.',true);return}
   setAuthStatus('Creating your secure account…');
-  const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:name}}});
+  let data,error;
+  try{
+    ({data,error}=await db.auth.signUp({email,password,options:{data:{full_name:name}}}));
+  }catch(requestError){setAuthStatus(friendlyError(requestError),true);return}
   if(error){setAuthStatus(friendlyError(error),true);return}
   if(data.session){
     localStorage.setItem('starVisualsAuthPrompted','1'); closeAuth(); toast('Account created. Welcome to STAR VISUALS.'); await loadStudio();

@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0a0908"><meta name="description" content="STAR VISUALS — video editing, cinematic storytelling, services and editing courses."><title>STAR VISUALS — Login / Sign up</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head><body><div class="grain" aria-hidden="true"></div><header class="header" id="siteHeader">
+  <a class="brand" href="index.html" aria-label="STAR VISUALS home"><span class="brand-star">✦</span><span>STAR</span><b>VISUALS</b></a>
+  <nav class="desktop-nav" aria-label="Primary navigation">
+    <a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">My Studio</a>
+  </nav>
+  <div class="header-right"><a class="social-mini" href="https://www.instagram.com/starraj_01?stkn=MTd5OHhrOGk2YWZiag==" target="_blank" rel="noopener">Instagram ↗</a><a class="login-trigger" href="login.html">Log in / Sign up</a><button class="menu" type="button" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button></div>
+</header>
+<div class="mobile-nav" aria-hidden="true"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">My Studio</a><a href="login.html">Log in / Sign up</a></div><main><section class="landing-hero auth-page-hero"><div class="eyebrow">STAR VISUALS / ACCOUNT</div><h1>Welcome to your<br><em>creative studio.</em></h1><p>Use your mobile number to receive a one-time password. New visitors can create an account instantly; returning users can sign in. Choose <strong>Log in</strong> or <strong>Sign up</strong> below.</p><button class="btn" type="button" data-open-auth="phone-login">Log in / Sign up <span>→</span></button></section><div class="auth-overlay open" id="authOverlay" aria-hidden="false">
+  <div class="auth-modal auth-pro" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button class="auth-close" type="button" aria-label="Close" data-close-auth>×</button>
+    <div class="auth-brandline"><span class="auth-mark">✦</span><span>STAR VISUALS / ACCOUNT</span></div>
+    <h2 id="authTitle">Welcome to your<br><em>creative studio.</em></h2>
+    <p class="auth-sub">Sign in to manage your courses, projects and editing work. New here? Create your studio account in seconds.</p>
+    <div class="auth-tabs" role="tablist" aria-label="Account action">
+      <button class="active" type="button" data-tab="phone-login" role="tab">Log in</button>
+      <button type="button" data-tab="phone-signup" role="tab">Create account</button>
+    </div>
+    <div class="auth-method-head">
+      <div><span class="method-dot"></span><strong id="authMethodTitle">Mobile verification</strong><small id="authMethodHint">Recommended · secure one-time code</small></div>
+      <button class="method-switch" type="button" id="toggleAuthMethod">Use email instead</button>
+    </div>
+    <div class="auth-method" id="phoneMethod">
+      <div class="auth-form" id="phoneAuthForm">
+        <label id="phoneNameWrap" class="hidden">Full name<input id="phoneName" type="text" autocomplete="name" placeholder="Your full name"></label>
+        <label>Mobile number<input id="phoneNumber" type="tel" inputmode="tel" autocomplete="tel" placeholder="+91 98765 43210" required></label>
+        <button class="auth-submit" type="button" id="sendOtpBtn">Continue with mobile <span>→</span></button>
+        <div id="otpStep" class="hidden">
+          <label>One-time password<input id="phoneOtp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter 6-digit code"></label>
+          <button class="auth-submit" type="button" id="verifyOtpBtn">Verify & continue <span>→</span></button>
+          <button class="text-button auth-change" type="button" id="changePhoneBtn">Change number</button>
+        </div>
+      </div>
+    </div>
+    <div class="auth-method hidden" id="emailMethod">
+      <form id="loginForm" class="auth-form">
+        <label>Email address<input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password"></label>
+        <button class="auth-submit" type="submit">Log in securely <span>→</span></button>
+      </form>
+      <form id="signupForm" class="auth-form hidden">
+        <label>Full name<input id="signupName" type="text" autocomplete="name" placeholder="Your full name"></label>
+        <label>Email address<input id="signupEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <label>Create password<input id="signupPassword" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters"></label>
+        <button class="auth-submit" type="submit">Create account <span>→</span></button>
+      </form>
+    </div>
+    <button class="guest-btn" type="button" data-close-auth>Continue browsing</button>
+    <p class="auth-note" id="authStatus">Secure authentication powered by Supabase.</p>
+  </div>
+</div></main><footer><span>✦ STAR VISUALS</span><span>Video editor · Creator · Educator</span><span>© 2026</span></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="script.js"></script></body></html>

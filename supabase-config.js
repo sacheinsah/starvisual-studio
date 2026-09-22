@@ -8,6 +8,6 @@
   NEVER put a Supabase service_role/secret key in this file or in the browser.
 */
 window.STAR_VISUALS_SUPABASE = {
-  url: 'YOUR_SUPABASE_PROJECT_URL',
-  publishableKey: 'YOUR_SUPABASE_PUBLISHABLE_KEY'
+  url: 'htps://your-project-id.supabase.co',
+  publishableKey: 'sb_publishable_uhJbULesquM3HLiap139Kg_WAxIQluO'
 };

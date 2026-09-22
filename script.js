@@ -13,6 +13,9 @@ const cfg=window.STAR_VISUALS_SUPABASE||{}; const supabaseReady=Boolean(window.s
 const overlay=document.getElementById('authOverlay');
 const loginForm=document.getElementById('loginForm');
 const signupForm=document.getElementById('signupForm');
+const resetForm=document.getElementById('resetForm');
+const updatePasswordForm=document.getElementById('updatePasswordForm');
+const forgotPasswordBtn=document.getElementById('forgotPasswordBtn');
 const authStatus=document.getElementById('authStatus');
 const phoneNameWrap=document.getElementById('phoneNameWrap');
 const phoneMethod=document.getElementById('phoneMethod');
@@ -23,23 +26,32 @@ const toggleAuthMethod=document.getElementById('toggleAuthMethod');
 const sendOtpBtn=document.getElementById('sendOtpBtn');
 const verifyOtpBtn=document.getElementById('verifyOtpBtn');
 const otpStep=document.getElementById('otpStep');
-let phoneMode='phone-login', pendingPhone='', authMethod='phone';
+let phoneMode='email-login', pendingPhone='', authMethod='email';
 
 function setAuthStatus(m,err=false){if(authStatus){authStatus.textContent=m;authStatus.classList.toggle('error',err)}}
-function openAuth(mode='phone-login'){
+function showPasswordUpdate(){
+  overlay?.classList.add('open'); overlay?.setAttribute('aria-hidden','false'); document.body.classList.add('modal-open');
+  loginForm?.classList.add('hidden'); signupForm?.classList.add('hidden'); resetForm?.classList.add('hidden'); updatePasswordForm?.classList.remove('hidden');
+  document.querySelectorAll('.auth-tabs button').forEach(b=>b.classList.remove('active'));
+  setAuthStatus('Choose a new password for your account.');
+  document.getElementById('newPassword')?.focus();
+}
+function openAuth(mode='email-login'){
   if(!overlay)return;
   overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false'); document.body.classList.add('modal-open');
   switchAuthMode(mode);
 }
 function closeAuth(){overlay?.classList.remove('open');overlay?.setAttribute('aria-hidden','true');document.body.classList.remove('modal-open')}
 function switchAuthMode(mode){
-  phoneMode=mode;
+  phoneMode=mode==='signup'?'email-signup':mode;
   document.querySelectorAll('.auth-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===mode));
-  const signup=mode==='phone-signup';
+  const signup=phoneMode==='email-signup';
   phoneNameWrap?.classList.toggle('hidden',!signup);
   signupForm?.classList.toggle('hidden',!signup);
+  resetForm?.classList.add('hidden');
+  updatePasswordForm?.classList.add('hidden');
   loginForm?.classList.toggle('hidden',signup);
-  setAuthStatus(authMethod==='phone'?'Secure mobile verification powered by Supabase.':'Your credentials are securely handled by Supabase.');
+  setAuthStatus('Your credentials are securely handled by Supabase.');
 }
 function setAuthMethod(method){
   authMethod=method;
@@ -103,11 +115,44 @@ loginForm?.addEventListener('submit',async e=>{
   localStorage.setItem('starVisualsAuthPrompted','1'); closeAuth(); toast('Signed in — your My Studio is connected.'); await loadStudio();
   if(location.pathname.endsWith('login.html')){const r=new URLSearchParams(location.search).get('returnTo');location.href=r?decodeURIComponent(r):'dashboard.html';}
 });
+forgotPasswordBtn?.addEventListener('click',()=>{
+  loginForm?.classList.add('hidden');
+  signupForm?.classList.add('hidden');
+  resetForm?.classList.remove('hidden');
+  const email=document.getElementById('loginEmail')?.value.trim();
+  const resetEmail=document.getElementById('resetEmail');
+  if(resetEmail&&email)resetEmail.value=email;
+  setAuthStatus('Enter your email and we will send a password reset link.');
+  resetEmail?.focus();
+});
+document.getElementById('backToLoginBtn')?.addEventListener('click',()=>switchAuthMode('email-login'));
+resetForm?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!db){setAuthStatus('Connect Supabase in supabase-config.js first.',true);return}
+  const email=document.getElementById('resetEmail').value.trim();
+  setAuthStatus('Sending your password reset link…');
+  const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:`${location.origin}${location.pathname}`});
+  if(error){setAuthStatus(friendlyError(error),true);return}
+  setAuthStatus('Check your email for a link to create a new password.');
+});
+updatePasswordForm?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!db){setAuthStatus('Connect Supabase in supabase-config.js first.',true);return}
+  const password=document.getElementById('newPassword').value,confirmation=document.getElementById('newPasswordConfirm').value;
+  if(password.length<6){setAuthStatus('Your password must be at least 6 characters.',true);return}
+  if(password!==confirmation){setAuthStatus('Your passwords do not match.',true);return}
+  setAuthStatus('Updating your password…');
+  const {error}=await db.auth.updateUser({password});
+  if(error){setAuthStatus(friendlyError(error),true);return}
+  updatePasswordForm.reset(); closeAuth(); toast('Your password has been updated.');
+});
 signupForm?.addEventListener('submit',async e=>{
   e.preventDefault();
   if(!db){setAuthStatus('Connect Supabase in supabase-config.js first.',true);return}
-  const name=document.getElementById('signupName').value.trim(),email=document.getElementById('signupEmail').value.trim(),password=document.getElementById('signupPassword').value;
+  const name=document.getElementById('signupName').value.trim(),email=document.getElementById('signupEmail').value.trim(),password=document.getElementById('signupPassword').value,confirmation=document.getElementById('signupPasswordConfirm').value;
   if(!name){setAuthStatus('Please enter your full name.',true);return}
+  if(password.length<6){setAuthStatus('Your password must be at least 6 characters.',true);return}
+  if(password!==confirmation){setAuthStatus('Your passwords do not match.',true);return}
   setAuthStatus('Creating your secure account…');
   const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:name}}});
   if(error){setAuthStatus(friendlyError(error),true);return}
@@ -184,5 +229,5 @@ projectForm?.addEventListener('submit',async e=>{
   setProjectStatus('Project enquiry submitted. You can track the deal from My Studio.');
   toast('Project enquiry sent to STAR VISUALS.');
 });
-async function init(){await loadCoursesFromDatabase();await loadStudio();if(!db)return;const {data:{session}}=await db.auth.getSession();const loginPage=location.pathname.endsWith('login.html');const mode=new URLSearchParams(location.search).get('mode');if(loginPage&&!session)setTimeout(()=>openAuth(mode==='signup'?'phone-signup':'phone-login'),250);const autoPrompt=!session&&!localStorage.getItem('starVisualsAuthPrompted')&&!loginPage;if(autoPrompt)setTimeout(()=>openAuth('phone-signup'),1400);db.auth.onAuthStateChange(()=>loadStudio());}
+async function init(){await loadCoursesFromDatabase();await loadStudio();if(!db)return;const {data:{session}}=await db.auth.getSession();const loginPage=location.pathname.endsWith('login.html');const mode=new URLSearchParams(location.search).get('mode');if(loginPage&&!session)setTimeout(()=>openAuth(mode==='signup'?'email-signup':'email-login'),250);const autoPrompt=!session&&!localStorage.getItem('starVisualsAuthPrompted')&&!loginPage;if(autoPrompt)setTimeout(()=>openAuth('email-signup'),1400);db.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showPasswordUpdate();loadStudio()});}
 init();

@@ -25,6 +25,31 @@
       <p class="auth-note" id="adminStatus">Checking administrator access…</p>
       <div class="admin-request-list" id="adminRequests"><div class="admin-empty">Loading requests…</div></div>
     </section>
+    <section class="section admin-section asset-admin-section">
+      <div class="admin-toolbar"><div><p class="eyebrow">ASSET LIBRARY</p><h2>Manage resources</h2></div></div>
+      <div class="asset-admin-box">
+        <form class="asset-admin-form" id="assetForm">
+          <input type="hidden" id="assetEditId" value="">
+          <div class="form-grid">
+            <label>Asset name<input name="name" id="assetName" required></label>
+            <label>Category<select name="category" id="assetCategory"><option>Layout Templates</option><option>Premiere Pro Templates</option><option>After Effects Templates</option><option>Title &amp; Text Presets</option><option>Transition Packs</option><option>SFX / Audio Packs</option><option>Thumbnail Templates</option><option>Reels &amp; Shorts Templates</option><option>LUTs / Color Presets</option><option>Project Files</option><option>Fonts / Typography Packs</option><option>Other Creative Assets</option></select></label>
+            <label>Software<input name="software" id="assetSoftware" placeholder="Premiere Pro / After Effects / DaVinci Resolve"></label>
+            <label>File type<input name="file_type" id="assetFileType" placeholder="ZIP / MP4 / MOV"></label>
+            <label>File size<input name="file_size" id="assetFileSize" placeholder="48 MB"></label>
+            <label>Access<select name="access_type" id="assetAccessType"><option value="free">Free</option><option value="premium">Premium</option></select></label>
+            <label>Price (₹)<input type="number" name="price" id="assetPrice" min="0" value="0"></label>
+            <label>Thumbnail URL<input name="thumbnail_url" id="assetThumbnail"></label>
+            <label>Preview URL<input name="preview_url" id="assetPreview"></label>
+            <label>File URL<input name="file_url" id="assetFileUrl" required></label>
+            <label>Published<select name="published" id="assetPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
+          </div>
+          <label>Description<textarea name="description" id="assetDescription" rows="4"></textarea></label>
+          <div class="asset-admin-actions"><button class="btn" type="submit">Save asset</button><button class="outline-btn" type="button" id="assetResetForm">Reset</button></div>
+          <p class="auth-note" id="assetStatus">Ready to add a new resource.</p>
+        </form>
+        <div class="asset-admin-list" id="adminAssetList"><div class="admin-empty">Loading assets…</div></div>
+      </div>
+    </section>
   </main>
   <footer><span>✦ STAR VISUALS</span><span>Private admin workspace</span><span>© 2026</span></footer>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

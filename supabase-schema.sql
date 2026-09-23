@@ -1,6 +1,6 @@
 -- STAR VISUALS — Supabase database
 -- Run this whole file once in Supabase SQL Editor.
--- It creates real profiles, courses, purchases and editing deals with RLS.
+-- It creates real profiles, courses and purchases with RLS.
 
 create extension if not exists pgcrypto;
 
@@ -10,10 +10,6 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   create type public.purchase_status as enum ('pending', 'paid', 'cancelled', 'refunded');
-exception when duplicate_object then null; end $$;
-
-do $$ begin
-  create type public.deal_status as enum ('enquiry', 'confirmed', 'in_progress', 'review', 'completed', 'cancelled');
 exception when duplicate_object then null; end $$;
 
 create table if not exists public.profiles (
@@ -53,16 +49,91 @@ create table if not exists public.course_purchases (
   unique (user_id, course_id)
 );
 
-create table if not exists public.editing_deals (
+-- Canonical project request table used by Project Brief, My Studio and Admin Studio.
+-- Safe to run on an existing project: create the table if absent, then add only missing columns.
+create table if not exists public.project_requests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
+  full_name text not null default '',
+  email text,
+  phone text,
   project_name text not null,
+  service_type text not null default '',
+  video_duration text,
+  platform text,
+  editing_style text,
+  requirements text not null default '',
+  deadline text,
+  budget text,
+  footage_link text,
+  reference_link text,
+  additional_notes text,
+  status text not null default 'NEW',
+  admin_notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   package_name text,
   amount_inr integer,
-  status public.deal_status not null default 'enquiry',
-  notes text,
+  notes text
+);
+
+alter table public.project_requests add column if not exists user_id uuid;
+alter table public.project_requests add column if not exists full_name text;
+alter table public.project_requests add column if not exists email text;
+alter table public.project_requests add column if not exists phone text;
+alter table public.project_requests add column if not exists project_name text;
+alter table public.project_requests add column if not exists service_type text;
+alter table public.project_requests add column if not exists video_duration text;
+alter table public.project_requests add column if not exists platform text;
+alter table public.project_requests add column if not exists editing_style text;
+alter table public.project_requests add column if not exists requirements text;
+alter table public.project_requests add column if not exists deadline text;
+alter table public.project_requests add column if not exists budget text;
+alter table public.project_requests add column if not exists footage_link text;
+alter table public.project_requests add column if not exists reference_link text;
+alter table public.project_requests add column if not exists additional_notes text;
+alter table public.project_requests add column if not exists status text;
+alter table public.project_requests add column if not exists admin_notes text;
+alter table public.project_requests add column if not exists created_at timestamptz default now();
+alter table public.project_requests add column if not exists updated_at timestamptz default now();
+alter table public.project_requests add column if not exists package_name text;
+alter table public.project_requests add column if not exists amount_inr integer;
+alter table public.project_requests add column if not exists notes text;
+
+create index if not exists project_requests_user_id_idx on public.project_requests(user_id);
+create index if not exists project_requests_status_idx on public.project_requests(status);
+create index if not exists project_requests_created_at_idx on public.project_requests(created_at desc);
+
+create type public.asset_access_type as enum ('free', 'premium');
+
+create table if not exists public.asset_library (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  category text not null default 'Other Creative Assets',
+  thumbnail_url text,
+  preview_url text,
+  file_url text,
+  file_type text,
+  file_size text,
+  software text,
+  access_type public.asset_access_type not null default 'free',
+  price numeric(10,2) default 0,
+  published boolean not null default true,
+  downloads_count integer not null default 0,
+  purchases_count integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists public.user_asset_access (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  asset_id uuid not null references public.asset_library(id) on delete cascade,
+  access_type public.asset_access_type not null default 'premium',
+  status text not null default 'downloaded' check (status in ('downloaded', 'purchased', 'available')),
+  created_at timestamptz not null default now(),
+  unique (user_id, asset_id)
 );
 
 -- Keep profile data synchronized with Supabase Auth.
@@ -103,8 +174,12 @@ drop trigger if exists profiles_updated_at on public.profiles;
 create trigger profiles_updated_at before update on public.profiles
 for each row execute procedure public.set_updated_at();
 
-drop trigger if exists editing_deals_updated_at on public.editing_deals;
-create trigger editing_deals_updated_at before update on public.editing_deals
+drop trigger if exists project_requests_updated_at on public.project_requests;
+create trigger project_requests_updated_at before update on public.project_requests
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists asset_library_updated_at on public.asset_library;
+create trigger asset_library_updated_at before update on public.asset_library
 for each row execute procedure public.set_updated_at();
 
 -- Helper used only inside RLS policies. It avoids exposing admin logic to the client.
@@ -124,7 +199,9 @@ $$;
 alter table public.profiles enable row level security;
 alter table public.courses enable row level security;
 alter table public.course_purchases enable row level security;
-alter table public.editing_deals enable row level security;
+alter table public.project_requests enable row level security;
+alter table public.asset_library enable row level security;
+alter table public.user_asset_access enable row level security;
 
 -- Profiles: users can read/update only their own profile. Admins can read all.
 drop policy if exists "profiles_select_own_or_admin" on public.profiles;
@@ -180,31 +257,64 @@ create policy "purchases_admin_delete"
 on public.course_purchases for delete
 using (public.is_admin());
 
--- Editing deals: users can see their own. Admins can manage all.
-
-drop policy if exists "deals_user_insert_own" on public.editing_deals;
-create policy "deals_user_insert_own"
-on public.editing_deals for insert
+-- Project requests: users can create and read only their own requests. Admins manage all.
+drop policy if exists "project_requests_user_insert_own" on public.project_requests;
+create policy "project_requests_user_insert_own"
+on public.project_requests for insert
 with check (user_id = auth.uid());
-drop policy if exists "deals_select_own_or_admin" on public.editing_deals;
-create policy "deals_select_own_or_admin"
-on public.editing_deals for select
+
+drop policy if exists "project_requests_select_own_or_admin" on public.project_requests;
+create policy "project_requests_select_own_or_admin"
+on public.project_requests for select
 using (user_id = auth.uid() or public.is_admin());
 
-drop policy if exists "deals_admin_insert" on public.editing_deals;
-create policy "deals_admin_insert"
-on public.editing_deals for insert
+drop policy if exists "project_requests_admin_update" on public.project_requests;
+create policy "project_requests_admin_update"
+on public.project_requests for update
+using (public.is_admin())
 with check (public.is_admin());
 
-drop policy if exists "deals_admin_update" on public.editing_deals;
-create policy "deals_admin_update"
-on public.editing_deals for update
+drop policy if exists "project_requests_admin_delete" on public.project_requests;
+create policy "project_requests_admin_delete"
+on public.project_requests for delete
+using (public.is_admin());
+
+-- Asset library: published assets are public to read. Admins manage all.
+drop policy if exists "assets_public_read" on public.asset_library;
+create policy "assets_public_read"
+on public.asset_library for select
+using (published = true or public.is_admin());
+
+drop policy if exists "assets_admin_insert" on public.asset_library;
+create policy "assets_admin_insert"
+on public.asset_library for insert
+with check (public.is_admin());
+
+drop policy if exists "assets_admin_update" on public.asset_library;
+create policy "assets_admin_update"
+on public.asset_library for update
 using (public.is_admin()) with check (public.is_admin());
 
-drop policy if exists "deals_admin_delete" on public.editing_deals;
-create policy "deals_admin_delete"
-on public.editing_deals for delete
+drop policy if exists "assets_admin_delete" on public.asset_library;
+create policy "assets_admin_delete"
+on public.asset_library for delete
 using (public.is_admin());
+
+-- User asset records: users can see their own access list; admins can read all.
+drop policy if exists "user_assets_select_own_or_admin" on public.user_asset_access;
+create policy "user_assets_select_own_or_admin"
+on public.user_asset_access for select
+using (user_id = auth.uid() or public.is_admin());
+
+drop policy if exists "user_assets_insert_own" on public.user_asset_access;
+create policy "user_assets_insert_own"
+on public.user_asset_access for insert
+with check (user_id = auth.uid());
+
+drop policy if exists "user_assets_update_own" on public.user_asset_access;
+create policy "user_assets_update_own"
+on public.user_asset_access for update
+using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- Starter course catalog. These are public course records, not purchases.
 insert into public.courses (id, title, slug, category, description, duration, delivery, price_inr, sort_order)

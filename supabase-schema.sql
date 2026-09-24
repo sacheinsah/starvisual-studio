@@ -332,3 +332,183 @@ on conflict (id) do update set
 -- IMPORTANT:
 -- Do not manually create course_purchases from the public website to represent a payment.
 -- The next build will add Stripe Checkout + a secure webhook that marks purchases as paid.
+
+
+-- ============================================================
+-- STAR VISUALS — ADMIN STUDIO EXTENSIONS
+-- Services, course enrollments/lessons and secure course storage.
+-- Safe to run after the existing schema.
+-- ============================================================
+
+create table if not exists public.enrollments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  course_id uuid not null references public.courses(id) on delete cascade,
+  enrolled_at timestamptz not null default now(),
+  unique(user_id, course_id)
+);
+
+alter table public.enrollments enable row level security;
+
+drop policy if exists "enrollments_select_own_or_admin" on public.enrollments;
+create policy "enrollments_select_own_or_admin" on public.enrollments
+for select using (user_id = auth.uid() or public.is_admin());
+
+drop policy if exists "enrollments_insert_own" on public.enrollments;
+create policy "enrollments_insert_own" on public.enrollments
+for insert with check (user_id = auth.uid());
+
+drop policy if exists "enrollments_delete_own_or_admin" on public.enrollments;
+create policy "enrollments_delete_own_or_admin" on public.enrollments
+for delete using (user_id = auth.uid() or public.is_admin());
+
+grant select, insert, delete on public.enrollments to authenticated;
+
+create table if not exists public.service_packages (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  price_display text not null default 'Contact for quote',
+  sort_order integer not null default 0,
+  published boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.service_packages enable row level security;
+drop policy if exists "services_public_read" on public.service_packages;
+create policy "services_public_read" on public.service_packages for select
+using (published = true or public.is_admin());
+drop policy if exists "services_admin_insert" on public.service_packages;
+create policy "services_admin_insert" on public.service_packages for insert
+with check (public.is_admin());
+drop policy if exists "services_admin_update" on public.service_packages;
+create policy "services_admin_update" on public.service_packages for update
+using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "services_admin_delete" on public.service_packages;
+create policy "services_admin_delete" on public.service_packages for delete
+using (public.is_admin());
+grant select on public.service_packages to anon, authenticated;
+grant insert, update, delete on public.service_packages to authenticated;
+
+drop trigger if exists service_packages_updated_at on public.service_packages;
+create trigger service_packages_updated_at before update on public.service_packages
+for each row execute procedure public.set_updated_at();
+
+insert into public.service_packages (name,description,price_display,sort_order,published)
+select * from (values
+  ('Normal Edit','Clean cuts · pacing · music · basic colour','₹700 – ₹1,000+',1,true),
+  ('VFX Edit','Visual effects · compositing · cleanup','₹2,000+',2,true),
+  ('Motion Graphics','Titles · animated elements · graphic movement','₹2,000 – ₹2,500+',3,true),
+  ('Documentary Edit','Long-form storytelling · pacing · sound · structure','₹2,500 – ₹3,000+',4,true)
+) as v(name,description,price_display,sort_order,published)
+where not exists (select 1 from public.service_packages);
+
+create table if not exists public.course_lessons (
+  id uuid primary key default gen_random_uuid(),
+  course_id uuid not null references public.courses(id) on delete cascade,
+  title text not null,
+  lesson_order integer not null default 1,
+  content_type text not null default 'file',
+  file_path text,
+  external_url text,
+  published boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.course_lessons enable row level security;
+
+drop policy if exists "course_lessons_select_enrolled_or_admin" on public.course_lessons;
+create policy "course_lessons_select_enrolled_or_admin" on public.course_lessons for select
+using (
+  public.is_admin()
+  or exists (
+    select 1 from public.enrollments e
+    where e.user_id = auth.uid() and e.course_id = course_lessons.course_id
+  )
+);
+
+drop policy if exists "course_lessons_admin_insert" on public.course_lessons;
+create policy "course_lessons_admin_insert" on public.course_lessons for insert
+with check (public.is_admin());
+drop policy if exists "course_lessons_admin_update" on public.course_lessons;
+create policy "course_lessons_admin_update" on public.course_lessons for update
+using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "course_lessons_admin_delete" on public.course_lessons;
+create policy "course_lessons_admin_delete" on public.course_lessons for delete
+using (public.is_admin());
+
+grant select on public.course_lessons to authenticated;
+grant insert, update, delete on public.course_lessons to authenticated;
+
+drop trigger if exists course_lessons_updated_at on public.course_lessons;
+create trigger course_lessons_updated_at before update on public.course_lessons
+for each row execute procedure public.set_updated_at();
+
+-- Private bucket for admin-uploaded course videos/files.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('course-files', 'course-files', false, 524288000)
+on conflict (id) do update set public = false;
+
+drop policy if exists "course_files_admin_insert" on storage.objects;
+create policy "course_files_admin_insert" on storage.objects
+for insert to authenticated
+with check (bucket_id = 'course-files' and public.is_admin());
+
+drop policy if exists "course_files_admin_update" on storage.objects;
+create policy "course_files_admin_update" on storage.objects
+for update to authenticated
+using (bucket_id = 'course-files' and public.is_admin())
+with check (bucket_id = 'course-files' and public.is_admin());
+
+drop policy if exists "course_files_admin_delete" on storage.objects;
+create policy "course_files_admin_delete" on storage.objects
+for delete to authenticated
+using (bucket_id = 'course-files' and public.is_admin());
+
+drop policy if exists "course_files_enrolled_read" on storage.objects;
+create policy "course_files_enrolled_read" on storage.objects
+for select to authenticated
+using (
+  bucket_id = 'course-files'
+  and (
+    public.is_admin()
+    or exists (
+      select 1 from public.enrollments e
+      where e.user_id = auth.uid()
+        and e.course_id::text = (storage.foldername(name))[1]
+    )
+  )
+);
+
+-- Public bucket for admin-managed creative assets.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('star-assets', 'star-assets', true, 524288000)
+on conflict (id) do update set public = true;
+
+drop policy if exists "star_assets_admin_insert" on storage.objects;
+create policy "star_assets_admin_insert" on storage.objects
+for insert to authenticated
+with check (bucket_id = 'star-assets' and public.is_admin());
+drop policy if exists "star_assets_admin_update" on storage.objects;
+create policy "star_assets_admin_update" on storage.objects
+for update to authenticated
+using (bucket_id = 'star-assets' and public.is_admin())
+with check (bucket_id = 'star-assets' and public.is_admin());
+drop policy if exists "star_assets_admin_delete" on storage.objects;
+create policy "star_assets_admin_delete" on storage.objects
+for delete to authenticated
+using (bucket_id = 'star-assets' and public.is_admin());
+
+grant usage on schema public to anon, authenticated;
+
+insert into public.asset_library
+  (name,description,category,thumbnail_url,preview_url,file_url,file_type,file_size,software,access_type,price,published)
+select * from (values
+  ('Cinematic Reel Pack','12 ready-to-use layouts for reels, hero cuts and fast social edits.','Layout Templates','assets/asset-pack/asset-library-cover.svg','assets/asset-pack/project-01.mp4','assets/star-visuals-asset-pack.zip','ZIP','48 MB','Premiere Pro','free',0,true),
+  ('Premium Motion Pack','Motion graphics references and project resources for transitions and animated reveals.','After Effects Templates','assets/asset-pack/asset-library-cover.svg','assets/asset-pack/project-03.mp4','assets/star-visuals-asset-pack.zip','ZIP','96 MB','After Effects','premium',199,true),
+  ('Thumbnail Formula Pack','High-contrast thumbnail layouts for videos and shorts.','Thumbnail Templates','assets/asset-pack/asset-library-cover.svg','assets/asset-pack/work-03-poster.jpg','assets/star-visuals-asset-pack.zip','ZIP','32 MB','Photoshop','premium',149,true),
+  ('Reels Transition Pack','Fast-moving transitions and sparkle moments for social edits.','Transition Packs','assets/asset-pack/asset-library-cover.svg','assets/asset-pack/project-04.mp4','assets/star-visuals-asset-pack.zip','ZIP','52 MB','Premiere Pro','free',0,true)
+) as v(name,description,category,thumbnail_url,preview_url,file_url,file_type,file_size,software,access_type,price,published)
+where not exists (select 1 from public.asset_library);

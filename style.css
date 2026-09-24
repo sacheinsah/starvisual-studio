@@ -144,3 +144,19 @@
 	.project:hover{transform:none}
 	.project:hover .video-shell{box-shadow:none}
 }
+
+/* Admin Studio controls */
+.admin-logout-btn{color:var(--paper)!important;border-color:rgba(216,170,84,.35)!important;cursor:pointer}
+.admin-editor-form{margin-top:24px;border:1px solid var(--line);background:rgba(255,255,255,.018);padding:24px}
+.admin-editor-form .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.admin-editor-form label{display:flex;flex-direction:column;gap:7px;color:#8f857c;font-size:9px;letter-spacing:.08em;text-transform:uppercase}
+.admin-editor-form input,.admin-editor-form select,.admin-editor-form textarea,.asset-admin-form input,.asset-admin-form select,.asset-admin-form textarea{width:100%;border:1px solid var(--line);background:#0e0c0a;color:var(--paper);padding:12px;font:inherit;font-size:12px;outline:none}
+.admin-editor-form input:focus,.admin-editor-form select:focus,.admin-editor-form textarea:focus{border-color:rgba(216,170,84,.5)}
+.admin-editor-form>label{margin-top:14px}
+.admin-editor-form .asset-admin-actions{margin-top:16px}
+.file-field input[type=file]{padding:9px}
+.service-price-row{width:100%;border:0;text-align:left;color:inherit;font:inherit;cursor:pointer;background:transparent}
+.service-price-row>b{border:0}
+.service-price-row:hover{color:inherit}
+@media(max-width:700px){.admin-editor-form .form-grid{grid-template-columns:1fr}.admin-editor-form{padding:18px}.service-price-row{grid-template-columns:1fr}.service-price-row>b{text-align:left;margin-top:14px}}
+.service-price-row{width:100%;font:inherit;color:inherit;text-align:inherit;cursor:pointer;background:transparent;border-left:0;border-right:0;border-top:0}.service-price-row:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}

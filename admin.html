@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0908">
   <meta name="description" content="STAR VISUALS — admin request management.">
-  <title>STAR VISUALS — Admin Requests</title>
+  <title>STAR VISUALS — Admin Panel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
@@ -15,16 +15,75 @@
   <div class="grain" aria-hidden="true"></div>
   <header class="header" id="siteHeader">
     <a class="brand" href="index.html" aria-label="STAR VISUALS home"><span class="brand-star">✦</span><span>STAR</span><b>VISUALS</b></a>
-    <nav class="desktop-nav" aria-label="Primary navigation"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">My Studio</a></nav>
-    <div class="header-right"><a class="login-trigger" href="login.html">Log in / Sign up</a></div>
+    <nav class="desktop-nav" aria-label="Primary navigation"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="admin.html">Admin Panel</a></nav>
+    <div class="header-right"><button class="outline-btn admin-logout-btn" type="button" id="adminLogoutBtn">Log out</button><button class="menu" type="button" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button></div>
   </header>
+  <div class="mobile-nav" aria-hidden="true"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="admin.html">Admin Panel</a><button type="button" id="adminMobileLogout">Log out</button></div>
   <main>
-    <section class="landing-hero compact admin-hero"><div class="eyebrow">STAR VISUALS / ADMIN</div><h1>Project<br><em>requests.</em></h1><p>Review incoming editing briefs, contact details and delivery status from one private workspace.</p></section>
+    <section class="landing-hero compact admin-hero"><div class="eyebrow">STAR VISUALS / ADMIN PANEL</div><h1>Control your<br><em>studio.</em></h1><p>Manage project requests, services, courses, course files, templates and the asset library from one private workspace.</p></section>
     <section class="section admin-section">
       <div class="admin-toolbar"><div><p class="eyebrow">INBOX</p><h2>Editing enquiries</h2></div><button class="outline-btn" type="button" id="adminRefresh">Refresh requests</button></div>
       <p class="auth-note" id="adminStatus">Checking administrator access…</p>
       <div class="admin-request-list" id="adminRequests"><div class="admin-empty">Loading requests…</div></div>
     </section>
+
+
+    <section class="section admin-section">
+      <div class="admin-toolbar"><div><p class="eyebrow">SERVICES</p><h2>Manage services & prices</h2></div><button class="outline-btn" type="button" id="serviceRefresh">Refresh services</button></div>
+      <p class="auth-note" id="serviceStatus">Manage the prices shown on the public Services page.</p>
+      <div class="admin-request-list" id="adminServiceList"><div class="admin-empty">Loading services…</div></div>
+      <form class="asset-admin-form admin-editor-form" id="serviceForm">
+        <input type="hidden" id="serviceEditId" value="">
+        <div class="form-grid">
+          <label>Service name<input id="serviceName" required></label>
+          <label>Starting price / display<input id="servicePrice" placeholder="₹700 – ₹1,000+" required></label>
+          <label>Sort order<input id="serviceSort" type="number" min="0" value="1"></label>
+          <label>Published<select id="servicePublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
+        </div>
+        <label>Description<textarea id="serviceDescription" rows="3"></textarea></label>
+        <div class="asset-admin-actions"><button class="btn" type="submit">Save service</button><button class="outline-btn" type="button" id="serviceReset">New service</button></div>
+      </form>
+    </section>
+
+    <section class="section admin-section">
+      <div class="admin-toolbar"><div><p class="eyebrow">COURSES</p><h2>Manage courses & lessons</h2></div><button class="outline-btn" type="button" id="courseRefresh">Refresh courses</button></div>
+      <p class="auth-note" id="courseAdminStatus">Create courses, edit prices and attach video/files for enrolled students.</p>
+      <form class="asset-admin-form admin-editor-form" id="courseAdminForm">
+        <input type="hidden" id="courseEditId" value="">
+        <div class="form-grid">
+          <label>Course title<input id="adminCourseTitle" required></label>
+          <label>Slug<input id="adminCourseSlug" placeholder="professional-video-editing"></label>
+          <label>Category<input id="adminCourseCategory"></label>
+          <label>Price (₹)<input id="adminCoursePrice" type="number" min="0" value="0"></label>
+          <label>Duration<input id="adminCourseDuration" placeholder="4 WEEKS"></label>
+          <label>Delivery<input id="adminCourseDelivery" placeholder="LIVE + PRACTICE"></label>
+          <label>Sort order<input id="adminCourseSort" type="number" min="0" value="1"></label>
+          <label>Published<select id="adminCoursePublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
+        </div>
+        <label>Description<textarea id="adminCourseDescription" rows="4"></textarea></label>
+        <div class="asset-admin-actions"><button class="btn" type="submit">Save course</button><button class="outline-btn" type="button" id="courseReset">New course</button></div>
+      </form>
+      <div class="admin-request-list" id="adminCourseList"><div class="admin-empty">Loading courses…</div></div>
+    </section>
+
+    <section class="section admin-section">
+      <div class="admin-toolbar"><div><p class="eyebrow">COURSE CONTENT</p><h2>Upload video & files</h2></div></div>
+      <p class="auth-note">Choose a course, add a lesson title, then upload an MP4/video or any lesson file to Supabase Storage.</p>
+      <form class="asset-admin-form admin-editor-form" id="lessonForm">
+        <div class="form-grid">
+          <label>Course<select id="lessonCourseId" required><option value="">Select course</option></select></label>
+          <label>Lesson title<input id="lessonTitle" required placeholder="Lesson 01 — Project setup"></label>
+          <label>Lesson order<input id="lessonOrder" type="number" min="1" value="1"></label>
+          <label>Published<select id="lessonPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
+          <label class="file-field">Video / lesson file<input id="lessonFile" type="file" accept="video/*,.pdf,.zip,.rar,.7z,.mov,.mp4,.m4v,.doc,.docx,.ppt,.pptx,.psd,.aep,.prproj,.cube,.wav,.mp3"></label>
+        </div>
+        <label>External URL (optional)<input id="lessonExternalUrl" placeholder="Use this instead of uploading a file"></label>
+        <div class="asset-admin-actions"><button class="btn" type="submit">Upload lesson</button><button class="outline-btn" type="button" id="lessonReset">Reset</button></div>
+        <p class="auth-note" id="lessonStatus">Supabase Storage must have the course-files bucket and admin policies from the included SQL migration.</p>
+      </form>
+      <div class="admin-request-list" id="adminLessonList"><div class="admin-empty">Select a course to view lessons.</div></div>
+    </section>
+
     <section class="section admin-section asset-admin-section">
       <div class="admin-toolbar"><div><p class="eyebrow">ASSET LIBRARY</p><h2>Manage resources</h2></div></div>
       <div class="asset-admin-box">
@@ -33,14 +92,15 @@
           <div class="form-grid">
             <label>Asset name<input name="name" id="assetName" required></label>
             <label>Category<select name="category" id="assetCategory"><option>Layout Templates</option><option>Premiere Pro Templates</option><option>After Effects Templates</option><option>Title &amp; Text Presets</option><option>Transition Packs</option><option>SFX / Audio Packs</option><option>Thumbnail Templates</option><option>Reels &amp; Shorts Templates</option><option>LUTs / Color Presets</option><option>Project Files</option><option>Fonts / Typography Packs</option><option>Other Creative Assets</option></select></label>
+            <label>New template/category<input id="assetCustomCategory" placeholder="e.g. YouTube Templates"></label>
             <label>Software<input name="software" id="assetSoftware" placeholder="Premiere Pro / After Effects / DaVinci Resolve"></label>
             <label>File type<input name="file_type" id="assetFileType" placeholder="ZIP / MP4 / MOV"></label>
             <label>File size<input name="file_size" id="assetFileSize" placeholder="48 MB"></label>
             <label>Access<select name="access_type" id="assetAccessType"><option value="free">Free</option><option value="premium">Premium</option></select></label>
             <label>Price (₹)<input type="number" name="price" id="assetPrice" min="0" value="0"></label>
-            <label>Thumbnail URL<input name="thumbnail_url" id="assetThumbnail"></label>
+            <label>Thumbnail URL<input name="thumbnail_url" id="assetThumbnail" value="assets/asset-pack/asset-library-cover.svg"></label>
             <label>Preview URL<input name="preview_url" id="assetPreview"></label>
-            <label>File URL<input name="file_url" id="assetFileUrl" required></label>
+            <label>File URL<input name="file_url" id="assetFileUrl"></label><label class="file-field">Upload asset file<input id="assetUploadFile" type="file"></label>
             <label>Published<select name="published" id="assetPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
           </div>
           <label>Description<textarea name="description" id="assetDescription" rows="4"></textarea></label>
@@ -54,6 +114,6 @@
   <footer><span>✦ STAR VISUALS</span><span>Private admin workspace</span><span>© 2026</span></footer>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260923-5"></script>
+  <script src="script.js?v=20260924-final"></script>
 </body>
 </html>

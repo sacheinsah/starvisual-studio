@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0908">
+  <meta name="description" content="STAR VISUALS course lessons.">
+  <title>STAR VISUALS — Course</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="header" id="siteHeader">
+    <a class="brand" href="index.html" aria-label="STAR VISUALS home"><span class="brand-star">✦</span><span>STAR</span><b>VISUALS</b></a>
+    <nav class="desktop-nav" aria-label="Primary navigation"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">My Studio</a></nav>
+    <div class="header-right"><a class="social-mini" href="https://www.instagram.com/starraj_01?stkn=MTd5OHhrOGk2YWZiag==" target="_blank" rel="noopener">Instagram ↗</a><a class="login-trigger" href="login.html">Log in / Sign up</a><button class="menu" type="button" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button></div>
+  </header>
+  <div class="mobile-nav" aria-hidden="true"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">My Studio</a><a href="login.html">Log in / Sign up</a></div>
+
+  <main class="course-detail-page">
+    <section class="landing-hero compact course-detail-hero">
+      <div class="eyebrow">STAR VISUALS / COURSE</div>
+      <h1 id="courseDetailTitle">Loading course…</h1>
+      <p id="courseDetailDescription">Loading course details.</p>
+      <div class="course-detail-actions">
+        <button class="btn" type="button" id="courseEnrollBtn">Join course <span>→</span></button>
+        <a class="quiet-link" href="courses.html">← Back to courses</a>
+      </div>
+      <p class="course-detail-status" id="courseDetailStatus" role="status">Loading…</p>
+    </section>
+
+    <section class="section course-lessons-section">
+      <div class="section-heading">
+        <div><p class="eyebrow">COURSE LESSONS</p><h2>Learn.<br><em>Practice.</em></h2></div>
+        <p id="lessonIntro">Lessons uploaded by STAR VISUALS for this course will appear here.</p>
+      </div>
+      <div class="course-lessons" id="courseLessons">
+        <div class="course-lesson-state">Loading lessons…</div>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>✦ STAR VISUALS</span><span>Video editor · Creator · Educator</span><span>© 2026</span></footer>
+
+  <div class="auth-overlay" id="authOverlay" aria-hidden="true"><div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authTitle"><button class="auth-close" type="button" aria-label="Close" data-close-auth>×</button><div class="auth-mark">✦</div><p class="eyebrow">WELCOME TO STAR VISUALS</p><h2 id="authTitle">Your creative<br><em>studio starts here.</em></h2><p class="auth-sub">Sign in or create your account with your email and password.</p><div class="auth-tabs"><button class="active" type="button" data-tab="email-login">Log in</button><button type="button" data-tab="email-signup">Sign up</button></div><div class="auth-divider"><span>or use email</span></div><form id="loginForm" class="auth-form"><label>Email<input id="loginEmail" type="email" placeholder="you@example.com"></label><label>Password<input id="loginPassword" type="password" placeholder="••••••••"></label><button class="auth-submit" type="submit">Log in with email <span>→</span></button></form><form id="signupForm" class="auth-form hidden"><label>Name<input id="signupName" type="text" placeholder="Your name"></label><label>Email<input id="signupEmail" type="email" placeholder="you@example.com"></label><label>Password<input id="signupPassword" type="password" minlength="6" placeholder="At least 6 characters"></label><label>Confirm password<input id="signupPasswordConfirm" type="password" minlength="6" placeholder="Re-enter your password"></label><button class="auth-submit" type="submit">Create account <span>→</span></button></form><button class="guest-btn" type="button" data-close-auth>Continue browsing</button><p class="auth-note" id="authStatus">Secure authentication powered by Supabase.</p></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js?v=20260924-course-fix"></script>
+  <script src="course-detail.js?v=20260924-course-fix"></script>
+</body>
+</html>

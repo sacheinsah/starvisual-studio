@@ -75,9 +75,11 @@
           <label>Lesson title<input id="lessonTitle" required placeholder="Lesson 01 — Project setup"></label>
           <label>Lesson order<input id="lessonOrder" type="number" min="1" value="1"></label>
           <label>Published<select id="lessonPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
-          <label class="file-field">Video / lesson file<input id="lessonFile" type="file" accept="video/*,.pdf,.zip,.rar,.7z,.mov,.mp4,.m4v,.doc,.docx,.ppt,.pptx,.psd,.aep,.prproj,.cube,.wav,.mp3"></label>
+          <label class="file-field">Video / lesson file<input id="lessonFile" type="file" accept="video/*,.mov,.mp4,.m4v,.webm,.ogg"></label>
+          <label class="file-field">Lecture materials (PDF/files, multiple)<input id="lessonMaterials" type="file" multiple accept=".pdf,.zip,.rar,.7z,.doc,.docx,.ppt,.pptx,.psd,.aep,.prproj,.cube,.wav,.mp3,.txt,.jpg,.jpeg,.png,.webp"></label>
         </div>
-        <label>External URL (optional)<input id="lessonExternalUrl" placeholder="Use this instead of uploading a file"></label>
+        <label>External lecture URL (optional)<input id="lessonExternalUrl" placeholder="Use this instead of uploading a video"></label>
+        <label>External material URLs (optional, one per line)<textarea id="lessonMaterialUrls" rows="3" placeholder="https://example.com/lecture-notes.pdf"></textarea></label>
         <div class="asset-admin-actions"><button class="btn" type="submit">Upload lesson</button><button class="outline-btn" type="button" id="lessonReset">Reset</button></div>
         <p class="auth-note" id="lessonStatus">Supabase Storage must have the course-files bucket and admin policies from the included SQL migration.</p>
       </form>
@@ -85,27 +87,36 @@
     </section>
 
     <section class="section admin-section asset-admin-section">
-      <div class="admin-toolbar"><div><p class="eyebrow">ASSET LIBRARY</p><h2>Manage resources</h2></div></div>
+      <div class="admin-toolbar"><div><p class="eyebrow">ASSET LIBRARY</p><h2>Manage downloadable resources</h2></div></div>
       <div class="asset-admin-box">
         <form class="asset-admin-form" id="assetForm">
           <input type="hidden" id="assetEditId" value="">
           <div class="form-grid">
             <label>Asset name<input name="name" id="assetName" required></label>
-            <label>Category<select name="category" id="assetCategory"><option>Layout Templates</option><option>Premiere Pro Templates</option><option>After Effects Templates</option><option>Title &amp; Text Presets</option><option>Transition Packs</option><option>SFX / Audio Packs</option><option>Thumbnail Templates</option><option>Reels &amp; Shorts Templates</option><option>LUTs / Color Presets</option><option>Project Files</option><option>Fonts / Typography Packs</option><option>Other Creative Assets</option></select></label>
-            <label>New template/category<input id="assetCustomCategory" placeholder="e.g. YouTube Templates"></label>
+            <label>Asset Library category<select name="category" id="assetCategory" required>
+              <option value="Cinematic Reel Pack">Cinematic Reel Pack</option>
+              <option value="Premium Motion Pack">Premium Motion Pack</option>
+              <option value="Thumbnail Formula Pack">Thumbnail Formula Pack</option>
+              <option value="Reel Transition Pack">Reel Transition Pack</option>
+              <option value="Cinematic LUT Pack">Cinematic LUT Pack</option>
+              <option value="Creator SFX Bundle">Creator SFX Bundle</option>
+            </select></label>
             <label>Software<input name="software" id="assetSoftware" placeholder="Premiere Pro / After Effects / DaVinci Resolve"></label>
             <label>File type<input name="file_type" id="assetFileType" placeholder="ZIP / MP4 / MOV"></label>
             <label>File size<input name="file_size" id="assetFileSize" placeholder="48 MB"></label>
             <label>Access<select name="access_type" id="assetAccessType"><option value="free">Free</option><option value="premium">Premium</option></select></label>
             <label>Price (₹)<input type="number" name="price" id="assetPrice" min="0" value="0"></label>
             <label>Thumbnail URL<input name="thumbnail_url" id="assetThumbnail" value="assets/asset-pack/asset-library-cover.svg"></label>
-            <label>Preview URL<input name="preview_url" id="assetPreview"></label>
-            <label>File URL<input name="file_url" id="assetFileUrl"></label><label class="file-field">Upload asset file<input id="assetUploadFile" type="file"></label>
+            <label class="file-field">Upload thumbnail<input id="assetUploadThumbnail" type="file" accept="image/*"></label>
+            <label>Preview URL<input name="preview_url" id="assetPreview" placeholder="Optional preview/content URL"></label>
+            <label>File URL<input name="file_url" id="assetFileUrl" placeholder="Optional if using uploaded file or external link"></label>
+            <label class="file-field">Upload asset file<input id="assetUploadFile" type="file"></label>
+            <label>External Download Link<input name="external_download_url" id="assetExternalDownload" type="url" placeholder="https://... (optional)"></label>
             <label>Published<select name="published" id="assetPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
           </div>
           <label>Description<textarea name="description" id="assetDescription" rows="4"></textarea></label>
           <div class="asset-admin-actions"><button class="btn" type="submit">Save asset</button><button class="outline-btn" type="button" id="assetResetForm">Reset</button></div>
-          <p class="auth-note" id="assetStatus">Ready to add a new resource.</p>
+          <p class="auth-note" id="assetStatus">Ready to add a new resource. Uploaded asset files and thumbnails use the Supabase <strong>star-assets</strong> bucket under <strong>asset-pack/</strong>.</p>
         </form>
         <div class="asset-admin-list" id="adminAssetList"><div class="admin-empty">Loading assets…</div></div>
       </div>

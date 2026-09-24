@@ -110,10 +110,11 @@ create table if not exists public.asset_library (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   description text,
-  category text not null default 'Other Creative Assets',
+  category text not null default 'Cinematic Reel Pack',
   thumbnail_url text,
   preview_url text,
   file_url text,
+  external_download_url text,
   file_type text,
   file_size text,
   software text,
@@ -420,14 +421,10 @@ create table if not exists public.course_lessons (
 alter table public.course_lessons enable row level security;
 
 drop policy if exists "course_lessons_select_enrolled_or_admin" on public.course_lessons;
-create policy "course_lessons_select_enrolled_or_admin" on public.course_lessons for select
-using (
-  public.is_admin()
-  or exists (
-    select 1 from public.enrollments e
-    where e.user_id = auth.uid() and e.course_id = course_lessons.course_id
-  )
-);
+drop policy if exists "course_lessons_select_authenticated" on public.course_lessons;
+create policy "course_lessons_select_enrolled_or_admin" on public.course_lessons
+for select to authenticated
+using (public.is_admin() or (published = true and exists (select 1 from public.enrollments e where e.course_id = course_lessons.course_id and e.user_id = auth.uid())));
 
 drop policy if exists "course_lessons_admin_insert" on public.course_lessons;
 create policy "course_lessons_admin_insert" on public.course_lessons for insert
@@ -445,6 +442,34 @@ grant insert, update, delete on public.course_lessons to authenticated;
 drop trigger if exists course_lessons_updated_at on public.course_lessons;
 create trigger course_lessons_updated_at before update on public.course_lessons
 for each row execute procedure public.set_updated_at();
+
+create table if not exists public.course_lesson_materials (
+  id uuid primary key default gen_random_uuid(),
+  lesson_id uuid not null references public.course_lessons(id) on delete cascade,
+  title text not null,
+  material_type text not null default 'file',
+  file_path text,
+  external_url text,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint course_lesson_materials_source_check check (file_path is not null or external_url is not null)
+);
+
+alter table public.course_lesson_materials enable row level security;
+drop policy if exists "course_lesson_materials_select_enrolled_or_admin" on public.course_lesson_materials;
+create policy "course_lesson_materials_select_enrolled_or_admin" on public.course_lesson_materials
+for select to authenticated using (public.is_admin() or exists (select 1 from public.course_lessons cl join public.enrollments e on e.course_id=cl.course_id where cl.id=course_lesson_materials.lesson_id and e.user_id=auth.uid()));
+drop policy if exists "course_lesson_materials_admin_insert" on public.course_lesson_materials;
+create policy "course_lesson_materials_admin_insert" on public.course_lesson_materials for insert with check (public.is_admin());
+drop policy if exists "course_lesson_materials_admin_update" on public.course_lesson_materials;
+create policy "course_lesson_materials_admin_update" on public.course_lesson_materials for update using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "course_lesson_materials_admin_delete" on public.course_lesson_materials;
+create policy "course_lesson_materials_admin_delete" on public.course_lesson_materials for delete using (public.is_admin());
+grant select on public.course_lesson_materials to authenticated;
+grant insert, update, delete on public.course_lesson_materials to authenticated;
+drop trigger if exists course_lesson_materials_updated_at on public.course_lesson_materials;
+create trigger course_lesson_materials_updated_at before update on public.course_lesson_materials for each row execute procedure public.set_updated_at();
 
 -- Private bucket for admin-uploaded course videos/files.
 insert into storage.buckets (id, name, public, file_size_limit)
@@ -482,6 +507,38 @@ using (
   )
 );
 
+-- Service Library assignments: an asset can belong to one or more published services.
+create table if not exists public.service_asset_links (
+  id uuid primary key default gen_random_uuid(),
+  asset_id uuid not null references public.asset_library(id) on delete cascade,
+  service_id uuid not null references public.service_packages(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (asset_id, service_id)
+);
+
+create index if not exists service_asset_links_asset_id_idx on public.service_asset_links(asset_id);
+create index if not exists service_asset_links_service_id_idx on public.service_asset_links(service_id);
+
+alter table public.service_asset_links enable row level security;
+
+drop policy if exists "service_asset_links_public_read" on public.service_asset_links;
+create policy "service_asset_links_public_read" on public.service_asset_links for select to anon, authenticated using (
+  exists (select 1 from public.asset_library a where a.id = asset_id and a.published = true)
+  and exists (select 1 from public.service_packages s where s.id = service_id and s.published = true)
+);
+
+drop policy if exists "service_asset_links_admin_insert" on public.service_asset_links;
+create policy "service_asset_links_admin_insert" on public.service_asset_links for insert to authenticated with check (public.is_admin());
+
+drop policy if exists "service_asset_links_admin_update" on public.service_asset_links;
+create policy "service_asset_links_admin_update" on public.service_asset_links for update to authenticated using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "service_asset_links_admin_delete" on public.service_asset_links;
+create policy "service_asset_links_admin_delete" on public.service_asset_links for delete to authenticated using (public.is_admin());
+
+grant select on public.service_asset_links to anon, authenticated;
+grant insert, update, delete on public.service_asset_links to authenticated;
+
 -- Public bucket for admin-managed creative assets.
 insert into storage.buckets (id, name, public, file_size_limit)
 values ('star-assets', 'star-assets', true, 524288000)
@@ -499,6 +556,10 @@ with check (bucket_id = 'star-assets' and public.is_admin());
 drop policy if exists "star_assets_admin_delete" on storage.objects;
 create policy "star_assets_admin_delete" on storage.objects
 for delete to authenticated
+using (bucket_id = 'star-assets' and public.is_admin());
+drop policy if exists "star_assets_admin_select" on storage.objects;
+create policy "star_assets_admin_select" on storage.objects
+for select to authenticated
 using (bucket_id = 'star-assets' and public.is_admin());
 
 grant usage on schema public to anon, authenticated;

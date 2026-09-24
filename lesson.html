@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0908"><meta name="description" content="STAR VISUALS course lecture and materials.">
+  <title>STAR VISUALS — Lecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="header" id="siteHeader">
+    <a class="brand" href="index.html" aria-label="STAR VISUALS home"><span class="brand-star">✦</span><span>STAR</span><b>VISUALS</b></a>
+    <nav class="desktop-nav" aria-label="Primary navigation"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">My Studio</a></nav>
+    <div class="header-right"><a class="social-mini" href="https://www.instagram.com/starraj_01?stkn=MTd5OHhrOGk2YWZiag==" target="_blank" rel="noopener">Instagram ↗</a><a class="login-trigger" href="login.html">Log in / Sign up</a><button class="menu" type="button" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button></div>
+  </header>
+  <div class="mobile-nav" aria-hidden="true"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">My Studio</a><a href="login.html">Log in / Sign up</a></div>
+
+  <main class="lesson-page">
+    <section class="landing-hero compact lesson-hero">
+      <div class="eyebrow" id="lessonCourseLabel">STAR VISUALS / COURSE LECTURE</div>
+      <h1 id="lessonTitle">Loading lecture…</h1>
+      <p id="lessonDescription">Your lecture and downloadable materials will appear here.</p>
+      <div class="lesson-hero-actions"><a class="quiet-link" id="backToCourse" href="courses.html">← Back to course</a><span class="course-detail-status" id="lessonStatus" role="status">Checking access…</span></div>
+    </section>
+
+    <section class="section lesson-content-section">
+      <div id="lessonMedia" class="lesson-player-shell"><div class="course-lesson-state">Loading lecture…</div></div>
+      <div class="lesson-layout">
+        <section class="lesson-materials" aria-labelledby="materialsTitle">
+          <div class="section-heading lesson-section-heading"><div><p class="eyebrow">COURSE MATERIALS</p><h2 id="materialsTitle">Watch.<br><em>Download.</em></h2></div><p>Reference PDFs and files uploaded by STAR VISUALS for this lecture.</p></div>
+          <div id="lessonMaterials" class="lesson-material-list"><div class="course-lesson-state">Loading materials…</div></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer><span>✦ STAR VISUALS</span><span>Video editor · Creator · Educator</span><span>© 2026</span></footer>
+  <div class="auth-overlay" id="authOverlay" aria-hidden="true"><div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authTitle"><button class="auth-close" type="button" aria-label="Close" data-close-auth>×</button><div class="auth-mark">✦</div><p class="eyebrow">WELCOME TO STAR VISUALS</p><h2 id="authTitle">Your creative<br><em>studio starts here.</em></h2><p class="auth-sub">Sign in or create your account with your email and password.</p><div class="auth-tabs"><button class="active" type="button" data-tab="email-login">Log in</button><button type="button" data-tab="email-signup">Sign up</button></div><div class="auth-divider"><span>or use email</span></div><form id="loginForm" class="auth-form"><label>Email<input id="loginEmail" type="email" placeholder="you@example.com"></label><label>Password<input id="loginPassword" type="password" placeholder="••••••••"></label><button class="auth-submit" type="submit">Log in with email <span>→</span></button></form><form id="signupForm" class="auth-form hidden"><label>Name<input id="signupName" type="text" placeholder="Your name"></label><label>Email<input id="signupEmail" type="email" placeholder="you@example.com"></label><label>Password<input id="signupPassword" type="password" minlength="6" placeholder="At least 6 characters"></label><label>Confirm password<input id="signupPasswordConfirm" type="password" minlength="6" placeholder="Re-enter your password"></label><button class="auth-submit" type="submit">Create account <span>→</span></button></form><button class="guest-btn" type="button" data-close-auth>Continue browsing</button><p class="auth-note" id="authStatus">Secure authentication powered by Supabase.</p></div></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="script.js?v=20260924-lesson-player"></script><script src="lesson-detail.js?v=20260924-lesson-player"></script>
+</body></html>

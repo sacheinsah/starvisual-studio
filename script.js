@@ -34,6 +34,7 @@ const cfg=window.STAR_VISUALS_SUPABASE||{};
 const validSupabaseUrl=typeof cfg.url==='string'&&/^https:\/\/[^/]+\.supabase\.co\/?$/.test(cfg.url)&&!cfg.url.includes('your-project-id');
 const supabaseReady=Boolean(window.supabase?.createClient&&validSupabaseUrl&&cfg.publishableKey&&!cfg.publishableKey.includes('YOUR_SUPABASE'));
 const db=supabaseReady?window.supabase.createClient(cfg.url,cfg.publishableKey):null;
+window.db=db;
 const authUnavailableMessage='Supabase is not connected yet. Add your real project URL in supabase-config.js.';
 
 function ensureAuthOverlay(){
@@ -236,42 +237,65 @@ signupForm?.addEventListener('submit',async e=>{
 document.querySelectorAll('video.showreel').forEach(v=>v.addEventListener('error',()=>{v.hidden=true;v.nextElementSibling?.removeAttribute('hidden')}));
 async function loadCoursesFromDatabase(){
   if(!db)return;
-  const {data,error}=await db.from('courses').select('id,title,description,duration,delivery,price_inr').eq('published',true).order('sort_order');
-  if(error||!data?.length){wireStaticServiceRows();return;}
   const buttons=[...document.querySelectorAll('.course-action')];
-  data.forEach((c,i)=>{
-    const b=buttons.find(x=>x.dataset.courseId===c.id)||buttons[i];
-    if(!b)return;
-    b.dataset.courseId=c.id;b.dataset.course=c.title;
-    const card=b.closest('.course-card');if(!card)return;
+  if(!buttons.length)return;
+  const {data,error}=await db.from('courses').select('id,title,description,duration,delivery,price_inr,slug,category').eq('published',true).order('sort_order');
+  if(error){
+    console.error('Course catalog load failed:',error);
+    buttons.forEach(b=>{b.disabled=true;b.dataset.courseId='';b.setAttribute('aria-disabled','true');});
+    return;
+  }
+  if(!data?.length){
+    buttons.forEach(b=>{b.disabled=true;b.dataset.courseId='';b.textContent='No courses available';});
+    return;
+  }
+  buttons.forEach((b,i)=>{
+    const c=data[i];
+    const card=b.closest('.course-card');
+    if(!c||!card)return;
+    b.disabled=false;
+    b.dataset.courseId=c.id;
+    b.dataset.course=c.title;
+    card.dataset.courseId=c.id;
+    card.dataset.courseTitle=c.title;
+    card.setAttribute('tabindex','0');
+    card.setAttribute('role','link');
+    card.setAttribute('aria-label',`Open ${c.title}`);
     const h=card.querySelector('h3');
-    if(h){const w=c.title.split(' ');h.innerHTML=`${escapeHtml(w.shift()||c.title)}<br><em>${escapeHtml(w.join(' '))}</em>`}
+    if(h){const words=c.title.trim().split(/\s+/);const split=Math.max(1,Math.ceil(words.length/2));h.innerHTML=`${escapeHtml(words.slice(0,split).join(' '))}<br><em>${escapeHtml(words.slice(split).join(' '))}</em>`}
     if(c.description)card.querySelector('p')?.replaceChildren(document.createTextNode(c.description));
     const m=card.querySelectorAll('.course-meta span');
     if(m[0]&&c.duration)m[0].textContent=c.duration;
     if(m[1]&&c.delivery)m[1].textContent=c.delivery;
+    b.innerHTML='View course <span>↗</span>';
   });
 }
-const courseModal=document.getElementById('courseModal');let selectedCourse=null;const fallback={'Editing From Scratch':'A complete foundation for creators: project setup, clean cuts, pacing, music, dialogue, colour basics and export.','Cinematic Editing':'Learn to create mood with rhythm, music, composition, sound design, colour and intentional transitions.','Motion & VFX':'Explore motion graphics, visual effects, compositing and post-production techniques that add impact without clutter.'};
-function openCourse(c){selectedCourse=c;if(!courseModal)return;document.getElementById('courseModalTitle').textContent=c.title;document.getElementById('courseModalText').textContent=c.description||fallback[c.title]||'Practical lessons and projects from STAR VISUALS.';courseModal.classList.add('open');courseModal.setAttribute('aria-hidden','false');document.body.classList.add('modal-open')}
-function closeCourse(){courseModal?.classList.remove('open');courseModal?.setAttribute('aria-hidden','true');document.body.classList.remove('modal-open')}
-document.querySelector('[data-close-course]')?.addEventListener('click',closeCourse);courseModal?.addEventListener('click',e=>{if(e.target===courseModal)closeCourse()});document.querySelectorAll('.course-action').forEach(b=>b.addEventListener('click',async()=>{const c={id:b.dataset.courseId,title:b.dataset.course||'Course'};if(db&&c.id){const {data}=await db.from('courses').select('*').eq('id',c.id).maybeSingle();if(data)Object.assign(c,data)}openCourse(c)}));
-async function enrollSelectedCourse(){
-  if(!selectedCourse?.id){toast('This course is not connected to a valid course record yet.');return;}
-  if(!db){openAuth('email-login','courses.html');return;}
-  const {data:{session}}=await db.auth.getSession();
-  if(!session?.user){closeCourse();location.href='login.html?returnTo=courses.html';return;}
-  const {data:existing,error:checkError}=await db.from('enrollments').select('id').eq('user_id',session.user.id).eq('course_id',selectedCourse.id).maybeSingle();
-  if(checkError){toast(friendlyError(checkError));return;}
-  if(existing){toast("You're already enrolled in this course.");return;}
-  const {error}=await db.from('enrollments').insert({user_id:session.user.id,course_id:selectedCourse.id});
-  if(error){
-    if(/duplicate|unique/i.test(error.message||'')){toast("You're already enrolled in this course.");return;}
-    toast(friendlyError(error));return;
-  }
-  closeCourse();toast('Enrollment successful. Opening your dashboard…');setTimeout(()=>{location.href='dashboard.html'},500);
+
+function openCourseById(courseId){
+  if(!courseId){toast('This course is not connected to a Supabase course record yet.');return;}
+  const url=new URL('course-detail.html',location.href);
+  url.searchParams.set('id',courseId);
+  location.href=url.href;
 }
-document.querySelector('[data-course-signup]')?.addEventListener('click',enrollSelectedCourse);
+
+// Event delegation keeps course cards working even when the database replaces their content.
+const courseGrid=document.querySelector('.modern-courses');
+courseGrid?.addEventListener('click',event=>{
+  const button=event.target.closest('.course-action');
+  const card=event.target.closest('.course-card');
+  const courseId=button?.dataset.courseId||card?.dataset.courseId;
+  if(!courseId)return;
+  event.preventDefault();
+  openCourseById(courseId);
+});
+courseGrid?.addEventListener('keydown',event=>{
+  if(event.key!=='Enter'&&event.key!==' ')return;
+  const card=event.target.closest('.course-card');
+  if(!card?.dataset.courseId)return;
+  event.preventDefault();
+  openCourseById(card.dataset.courseId);
+});
+
 function animateSocialCounters(){document.querySelectorAll('.social-count').forEach((node)=>{const target=Number(node.dataset.base||0);const format=(value)=>{if(value>=1000000)return `${(value/1000000).toFixed(1)}M+`;if(value>=1000)return `${(value/1000).toFixed(value>=100000?0:1)}K+`;return `${Math.round(value)}+`};const started=performance.now();const duration=1400;const step=(now)=>{const progress=Math.min(1,(now-started)/duration);const eased=1-Math.pow(1-progress,3);node.textContent=format(target*eased);if(progress<1)requestAnimationFrame(step)};requestAnimationFrame(step);});}
 async function loadStudio(){
   if(!db)return;
@@ -301,7 +325,7 @@ async function loadStudio(){
   }else if(!enrollments?.length){
     box.innerHTML='<span>✦</span><p>No enrolled courses yet.</p><a class="text-button" href="courses.html">Explore courses →</a>';
   }else{
-    box.innerHTML=enrollments.map(i=>`<div class="purchased-course"><strong>${escapeHtml(i.course?.title||'Course')}</strong><span>${escapeHtml(i.course?.duration||'STAR VISUALS course')}</span><div class="progress"><i style="width:0%"></i></div><small>Enrolled ${i.enrolled_at?new Date(i.enrolled_at).toLocaleDateString('en-IN'):''}</small></div>`).join('');
+    box.innerHTML=enrollments.map(i=>{const courseId=i.course_id;return `<div class="purchased-course"><strong>${escapeHtml(i.course?.title||'Course')}</strong><span>${escapeHtml(i.course?.duration||'STAR VISUALS course')}</span><div class="progress"><i style="width:0%"></i></div><small>Enrolled ${i.enrolled_at?new Date(i.enrolled_at).toLocaleDateString('en-IN'):''}</small>${courseId?`<a class="text-button" href="course-detail.html?id=${encodeURIComponent(courseId)}">Continue learning →</a>`:''}</div>`}).join('');
   }
   const dr=await db.from('project_requests').select('project_name,service_type,package_name,amount_inr,status,deadline,admin_notes,updated_at').eq('user_id',u.id).order('updated_at',{ascending:false}).limit(1).maybeSingle();
   const d=dr.data;
@@ -360,19 +384,47 @@ projectForm?.addEventListener('submit',async e=>{
   toast('Project enquiry sent to STAR VISUALS.');
 });
 
+const ASSET_LIBRARY_CATEGORIES=[
+  'Cinematic Reel Pack',
+  'Premium Motion Pack',
+  'Thumbnail Formula Pack',
+  'Reel Transition Pack',
+  'Cinematic LUT Pack',
+  'Creator SFX Bundle'
+];
+const ASSET_LIBRARY_CATEGORY_META={
+  'Cinematic Reel Pack':'Cinematic reel templates and storytelling resources.',
+  'Premium Motion Pack':'Premium motion graphics, presets and animation resources.',
+  'Thumbnail Formula Pack':'Thumbnail systems and visual formulas for creators.',
+  'Reel Transition Pack':'Transitions and finishing assets for short-form edits.',
+  'Cinematic LUT Pack':'Cinematic colour presets and LUT resources.',
+  'Creator SFX Bundle':'Impacts, whooshes, ambience and creator sound effects.'
+};
 const assetCatalogFallback=[
-  {id:'cinematic-reel-pack',name:'Cinematic Reel Pack',description:'12 layouts built for fast reel storytelling and hero cuts.',category:'Layout Templates',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-01.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'48 MB',software:'Premiere Pro',access_type:'free',price:0},
-  {id:'premium-motion-pack',name:'Premium Motion Pack',description:'25 motion preset animations for transitions, reveals and text movement.',category:'After Effects Templates',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-03.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'96 MB',software:'After Effects',access_type:'premium',price:199},
-  {id:'thumbnail-templates',name:'Thumbnail Formula Pack',description:'High-contrast thumbnail layouts for content and shorts growth.',category:'Thumbnail Templates',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/work-03-poster.jpg',file_url:'assets/star-visuals-asset-pack.zip',file_type:'PSD',file_size:'32 MB',software:'Photoshop',access_type:'premium',price:149},
-  {id:'reels-transitions',name:'Reels Transition Pack',description:'Fast-moving transitions and sparkle moments for social media edits.',category:'Transition Packs',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-04.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'52 MB',software:'Premiere Pro',access_type:'free',price:0},
-  {id:'cinematic-luts',name:'Cinematic LUT Pack',description:'Warm contrast and highlight balancing presets for reels and interviews.',category:'LUTs / Color Presets',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/work-04-poster.jpg',file_url:'assets/star-visuals-asset-pack.zip',file_type:'CUBE',file_size:'14 MB',software:'DaVinci Resolve',access_type:'premium',price:99},
-  {id:'sfx-bundle',name:'Creator SFX Bundle',description:'Clean cinematic impacts, whooshes and ambience pack for edit finishing.',category:'SFX / Audio Packs',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/star-visuals-showreel.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'70 MB',software:'Premiere Pro / Audition',access_type:'free',price:0}
+  {id:'cinematic-reel-pack',name:'Cinematic Reel Pack',description:'12 layouts built for fast reel storytelling and hero cuts.',category:'Cinematic Reel Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-01.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'48 MB',software:'Premiere Pro',access_type:'free',price:0,published:true},
+  {id:'premium-motion-pack',name:'Premium Motion Pack',description:'25 motion preset animations for transitions, reveals and text movement.',category:'Premium Motion Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-03.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'96 MB',software:'After Effects',access_type:'premium',price:199,published:true},
+  {id:'thumbnail-templates',name:'Thumbnail Formula Pack',description:'High-contrast thumbnail layouts for content and shorts growth.',category:'Thumbnail Formula Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/work-03-poster.jpg',file_url:'assets/star-visuals-asset-pack.zip',file_type:'PSD',file_size:'32 MB',software:'Photoshop',access_type:'premium',price:149,published:true},
+  {id:'reels-transitions',name:'Reel Transition Pack',description:'Fast-moving transitions and sparkle moments for social media edits.',category:'Reel Transition Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-04.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'52 MB',software:'Premiere Pro',access_type:'free',price:0,published:true},
+  {id:'cinematic-luts',name:'Cinematic LUT Pack',description:'Warm contrast and highlight balancing presets for reels and interviews.',category:'Cinematic LUT Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/work-04-poster.jpg',file_url:'assets/star-visuals-asset-pack.zip',file_type:'CUBE',file_size:'14 MB',software:'DaVinci Resolve',access_type:'premium',price:99,published:true},
+  {id:'sfx-bundle',name:'Creator SFX Bundle',description:'Clean cinematic impacts, whooshes and ambience pack for edit finishing.',category:'Creator SFX Bundle',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/star-visuals-showreel.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'70 MB',software:'Premiere Pro / Audition',access_type:'free',price:0,published:true}
 ];
 window.STAR_VISUALS_ASSET_CATALOG=(window.STAR_VISUALS_ASSET_CATALOG||assetCatalogFallback).length?window.STAR_VISUALS_ASSET_CATALOG||assetCatalogFallback:assetCatalogFallback;
 
-function normalizeAsset(asset){const item={...asset};item.id=item.id||String(item.name||'asset').toLowerCase().replace(/[^a-z0-9]+/g,'-');item.category=item.category||'Other Creative Assets';item.access_type=(item.access_type||item.accessType||'free').toLowerCase();item.price=Number(item.price||0);item.file_size=item.file_size||item.fileSize||'—';item.software=item.software||'Any';item.thumbnail_url=item.thumbnail_url||'assets/asset-pack/asset-library-cover.svg';item.published=item.published!==false;return item;}
+function normalizeAsset(asset){
+  const item={...asset};
+  item.id=item.id||String(item.name||'asset').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  item.category=ASSET_LIBRARY_CATEGORIES.includes(item.category)?item.category:'Cinematic Reel Pack';
+  item.access_type=(item.access_type||item.accessType||'free').toLowerCase();
+  item.price=Number(item.price||0);
+  item.file_size=item.file_size||item.fileSize||'—';
+  item.software=item.software||'Any';
+  item.thumbnail_url=item.thumbnail_url||'assets/asset-pack/asset-library-cover.svg';
+  item.published=item.published!==false;
+  item.external_download_url=item.external_download_url||item.externalDownloadUrl||'';
+  return item;
+}
 function formatAssetPrice(asset){const item=normalizeAsset(asset);return item.access_type==='free'?'FREE':`₹${Number(item.price||0).toLocaleString('en-IN')}`;}
-function assetLockLabel(asset){const item=normalizeAsset(asset);return item.access_type==='premium' ? '<span class=\'asset-lock\'>Premium access</span>' : '<span class=\'asset-lock\'>Free</span>'}
+function assetLockLabel(asset){const item=normalizeAsset(asset);return item.access_type==='premium' ? '<span class="asset-lock">Premium access</span>' : '<span class="asset-lock">Free</span>'}
 function findAssetById(assetId){const catalog=window.STAR_VISUALS_ASSET_CATALOG||[];return [...catalog].map(normalizeAsset).find((asset)=>String(asset.id)===String(assetId))||null;}
 function setAssetStatus(message,error=false){const el=document.getElementById('assetStatus');if(!el)return;el.textContent=message;el.classList.toggle('error',Boolean(error));}
 
@@ -381,7 +433,7 @@ async function handleAssetDownload(asset){
   if(!db){toast('Connect Supabase in supabase-config.js to unlock asset downloads.');return;}
   const {data:{session}}=await db.auth.getSession();
   if(item.access_type==='premium'&&!session?.user){openAuth('email-login');toast('Log in to unlock premium assets.');return;}
-  const directUrl=item.file_url||item.preview_url;
+  const directUrl=item.external_download_url||item.file_url||item.preview_url;
   if(!directUrl){toast('This asset is not available yet.');return;}
   if(item.access_type==='premium'&&session?.user&&/^[0-9a-f-]{36}$/i.test(String(item.id))){
     const {data:accessRecord}=await db.from('user_asset_access').select('id').eq('user_id',session.user.id).eq('asset_id',item.id).maybeSingle();
@@ -390,38 +442,57 @@ async function handleAssetDownload(asset){
       if(error){toast(friendlyError(error));return;}
     }
   }
-  if(typeof window !== 'undefined' && /^https?:\/\//i.test(directUrl)){window.open(directUrl,'_blank','noopener');toast(item.access_type==='premium'?'Premium asset unlocked.':'Asset downloaded.');return;}
-  if(db.storage && item.file_url && !/^https?:\/\//i.test(item.file_url)){
-    const {data,error}=await db.storage.from('star-assets').createSignedUrl(item.file_url,3600);
+  if(typeof window!=='undefined'&&/^https?:\/\//i.test(directUrl)){window.open(directUrl,'_blank','noopener');toast(item.access_type==='premium'?'Premium asset unlocked.':'Asset downloaded.');return;}
+  if(db.storage&&item.file_url&&!/^https?:\/\//i.test(item.file_url)){
+    const {data,error}=await assetStorage().createSignedUrl(item.file_url,3600);
     if(error){toast(friendlyError(error));return;}
     if(data?.signedUrl){window.open(data.signedUrl,'_blank','noopener');toast(item.access_type==='premium'?'Premium asset unlocked.':'Asset downloaded.');return;}
   }
   toast('This asset is not available yet.');
 }
 
+function assetCardsMarkup(assets){
+  return (assets||[]).map((asset)=>{
+    const item=normalizeAsset(asset);
+    return `<article class="asset-card ${item.access_type==='premium'?'premium':''}"><div class="asset-thumb" style="background-image:url('${escapeHtml(item.thumbnail_url)}')"><span class="asset-badge ${item.access_type==='premium'?'premium':''}">${item.access_type==='premium'?'Premium':'Free'}</span></div><div class="asset-content"><div class="asset-meta-top"><span class="asset-category">${escapeHtml(item.category)}</span>${item.access_type==='premium'?'<span class="asset-lock">Premium</span>':'<span class="asset-lock">Free</span>'}</div><h4>${escapeHtml(item.name)}</h4><p>${escapeHtml(item.description||'Creative asset for faster editing workflows.')}</p><div class="asset-specs"><div>Software<strong>${escapeHtml(item.software)}</strong></div><div>Type<strong>${escapeHtml(item.file_type||'ZIP')}</strong></div><div>Size<strong>${escapeHtml(item.file_size||'—')}</strong></div><div>Price<strong>${formatAssetPrice(item)}</strong></div></div><div class="asset-price">${formatAssetPrice(item)}</div><div class="asset-actions"><button class="asset-button" type="button" data-asset-id="${escapeHtml(String(item.id))}" data-asset-action="preview">Preview</button><button class="asset-button primary" type="button" data-asset-id="${escapeHtml(String(item.id))}" data-asset-action="download">${item.access_type==='premium'?'Get Asset':'Download'}</button></div></div></article>`;
+  }).join('');
+}
+
 function renderAssetCards(containerId, assets){
-  const list=document.getElementById(containerId);
-  if(!list)return;
+  const list=document.getElementById(containerId); if(!list)return;
   const catalog=(assets||window.STAR_VISUALS_ASSET_CATALOG||[]).map(normalizeAsset);
-  window.STAR_VISUALS_ASSET_CATALOG = catalog;
+  window.STAR_VISUALS_ASSET_CATALOG=catalog;
   if(!catalog.length){list.innerHTML='<div class="asset-empty">No published assets yet. Try again soon.</div>';return;}
-  list.innerHTML=catalog.map((asset)=>`<article class="asset-card ${asset.access_type==='premium'?'premium':''}"><div class="asset-thumb" style="background-image:url('${escapeHtml(asset.thumbnail_url)}')"><span class="asset-badge ${asset.access_type==='premium'?'premium':''}">${asset.access_type==='premium'?'Premium':'Free'}</span></div><div class="asset-content"><div class="asset-meta-top"><span class="asset-category">${escapeHtml(asset.category)}</span>${asset.access_type==='premium'?'<span class="asset-lock">Premium</span>':'<span class="asset-lock">Free</span>'}</div><h4>${escapeHtml(asset.name)}</h4><p>${escapeHtml(asset.description||'Creative asset for faster editing workflows.')}</p><div class="asset-specs"><div>Software<strong>${escapeHtml(asset.software)}</strong></div><div>Type<strong>${escapeHtml(asset.file_type||'ZIP')}</strong></div><div>Size<strong>${escapeHtml(asset.file_size||'—')}</strong></div><div>Price<strong>${formatAssetPrice(asset)}</strong></div></div><div class="asset-price">${formatAssetPrice(asset)}</div><div class="asset-actions"><button class="asset-button" type="button" data-asset-id="${escapeHtml(String(asset.id))}" data-asset-action="preview">Preview</button><button class="asset-button primary" type="button" data-asset-id="${escapeHtml(String(asset.id))}" data-asset-action="download">${asset.access_type==='premium'?'Get Asset':'Download'}</button></div></div></article>`).join('');
+  list.innerHTML=assetCardsMarkup(catalog);
+}
+
+function renderAssetCategorySections(hostId, assets){
+  const host=document.getElementById(hostId); if(!host)return;
+  const catalog=(assets||[]).map(normalizeAsset);
+  const sections=ASSET_LIBRARY_CATEGORIES.map(category=>({category,assets:catalog.filter(asset=>asset.category===category)})).filter(section=>section.assets.length);
+  host.innerHTML=sections.length?sections.map(section=>`<section class="service-asset-group"><div class="service-asset-group-head"><div><h4>${escapeHtml(section.category)}</h4><p>${escapeHtml(ASSET_LIBRARY_CATEGORY_META[section.category])}</p></div></div><div class="asset-grid">${assetCardsMarkup(section.assets)}</div></section>`).join(''):'<div class="asset-empty">No published assets are available yet.</div>';
 }
 
 async function loadAssetCatalog(){
-  const catalogElement=document.getElementById('assetLibraryGrid')||document.getElementById('servicesAssetGrid');
-  if(!catalogElement)return;
-  let assets = [...assetCatalogFallback];
+  const catalogElement=document.getElementById('assetLibraryGrid');
+  const categoryHost=document.getElementById('servicesAssetSections')||document.getElementById('assetLibrarySections');
+  if(!catalogElement&&!categoryHost)return;
+  let assets=[...assetCatalogFallback];
   if(db){
     const {data,error}=await db.from('asset_library').select('*').eq('published',true).order('created_at',{ascending:false});
-    if(!error && data?.length){assets=data.map(normalizeAsset);} 
+    if(error){
+      console.error('Public Asset Library load failed:',error);
+      assets=[];
+    }else{
+      assets=(data||[]).map(normalizeAsset);
+    }
   }
-  window.STAR_VISUALS_ASSET_CATALOG = assets.map(normalizeAsset);
-  renderAssetCards(catalogElement.id, assets);
+  assets=assets.map(normalizeAsset);
+  window.STAR_VISUALS_ASSET_CATALOG=assets;
+  if(categoryHost)renderAssetCategorySections(categoryHost.id,assets);
+  if(catalogElement)renderAssetCards('assetLibraryGrid',assets);
   const categoryRows=document.querySelectorAll('.asset-category-row');
-  const categories=[...new Set(window.STAR_VISUALS_ASSET_CATALOG.map(a=>a.category).filter(Boolean))].slice(0,8);
-  categoryRows.forEach(row=>{if(categories.length)row.innerHTML=categories.map(c=>`<span class="asset-category-tag">${escapeHtml(c)}</span>`).join('');});
-
+  categoryRows.forEach(row=>{row.innerHTML=ASSET_LIBRARY_CATEGORIES.map(c=>`<span class="asset-category-tag">${escapeHtml(c)}</span>`).join('');});
 }
 
 async function loadMyAssets(){
@@ -451,13 +522,38 @@ document.addEventListener('click',async (event)=>{
   if(assetAction==='download'){await handleAssetDownload(asset);}
 });
 
+const STAR_VISUALS_ASSET_BUCKET='star-assets';
+const STAR_VISUALS_ASSET_FOLDER='asset-pack';
+const STAR_VISUALS_THUMBNAIL_FOLDER='asset-pack/thumbnails';
+
+function assetStorage(bucket=STAR_VISUALS_ASSET_BUCKET){
+  if(!db?.storage)throw new Error('Supabase Storage is not available. Check supabase-config.js.');
+  return db.storage.from(bucket);
+}
+function assetStorageError(error){
+  const message=error?.message||String(error||'Unknown storage error.');
+  if(/bucket.*not found/i.test(message))return `Storage bucket "${STAR_VISUALS_ASSET_BUCKET}" was not found. Run the included supabase-asset-library-separation-fix.sql migration in Supabase SQL Editor.`;
+  if(/row-level security|permission denied|not authorized|unauthorized/i.test(message))return `Storage permission denied. Make sure your signed-in account is an admin and the Asset Library storage policies are installed.`;
+  return message;
+}
+
 async function loadAdminAssets(){
   const list=document.getElementById('adminAssetList');
   if(!list||!db)return;
   const {data,error}=await db.from('asset_library').select('*').order('created_at',{ascending:false});
-  if(error){list.innerHTML='<div class="admin-empty">Assets could not be loaded.</div>';return;}
+  if(error){
+    console.error('Asset library database load failed:',error);
+    const assetDbMessage=error?.message&&/external_download_url.*asset_library.*schema cache|asset_library.*external_download_url.*schema cache/i.test(error.message)
+      ? `The Asset Library table exists, but its external_download_url column is missing from Supabase. Run supabase-asset-library-column-fix.sql in Supabase SQL Editor, then refresh this page.`
+      : error?.message&&/asset_library.*schema cache|relation .*asset_library.*does not exist/i.test(error.message)
+        ? `The Asset Library table is missing from Supabase. Run supabase-asset-library-separation-fix.sql in Supabase SQL Editor, then refresh this page.`
+        : friendlyError(error);
+    list.innerHTML=`<div class="admin-empty">Assets could not be loaded: ${escapeHtml(assetDbMessage)}</div>`;
+    setAssetStatus(assetDbMessage,true);
+    return;
+  }
   if(!data?.length){list.innerHTML='<div class="admin-empty">No assets yet. Add your first resource above.</div>';return;}
-  list.innerHTML=data.map((asset)=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(asset.access_type||'free')}</span><h3>${escapeHtml(asset.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-asset-edit="${asset.id}">Edit</button><button class="outline-btn" type="button" data-asset-delete="${asset.id}">Delete</button></div></div><div class="admin-request-grid"><div><span>Category</span><strong>${escapeHtml(asset.category||'Other Creative Assets')}</strong></div><div><span>Downloads</span><strong>${Number(asset.downloads_count||0)}</strong></div><div><span>Purchases</span><strong>${Number(asset.purchases_count||0)}</strong></div></div><div class="admin-brief"><span>DETAILS</span><p>${escapeHtml(asset.description||'No description yet.')}</p></div></article>`).join('');
+  list.innerHTML=data.map((asset)=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(asset.published?'Published':'Draft')}</span><h3>${escapeHtml(asset.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-asset-edit="${escapeHtml(asset.id)}">Edit</button><button class="outline-btn" type="button" data-asset-delete="${escapeHtml(asset.id)}">Delete</button></div></div><div class="admin-request-grid"><div><span>Asset Library category</span><strong>${escapeHtml(asset.category||'Cinematic Reel Pack')}</strong></div><div><span>Access</span><strong>${escapeHtml(asset.access_type||'free')}</strong></div><div><span>Download</span><strong>${asset.external_download_url?'External link':asset.file_url?'Storage file':'Not set'}</strong></div></div><div class="admin-brief"><span>DETAILS</span><p>${escapeHtml(asset.description||'No description yet.')}</p></div></article>`).join('');
 }
 
 const assetForm=document.getElementById('assetForm');
@@ -466,64 +562,95 @@ async function uploadAdminFile(bucket,file,folder){
   if(!db||!file)return null;
   const safe=file.name.toLowerCase().replace(/[^a-z0-9._-]+/g,'-');
   const path=`${folder}/${Date.now()}-${safe}`;
-  const {data,error}=await db.storage.from(bucket).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
-  if(error)throw error;
+  const storage=assetStorage(bucket);
+  const {data,error}=await storage.upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+  if(error)throw new Error(assetStorageError(error));
   return {path:data.path};
 }
-assetForm?.addEventListener('submit',async (event)=>{
+assetForm?.addEventListener('submit',async(event)=>{
   event.preventDefault();
   if(!db){setAssetStatus('Connect Supabase before managing assets.',true);return;}
   const file=document.getElementById('assetUploadFile')?.files?.[0]||null;
+  const thumbnailFile=document.getElementById('assetUploadThumbnail')?.files?.[0]||null;
   try{
-    setAssetStatus(file?'Uploading asset file…':'Saving asset…');
+    setAssetStatus(file||thumbnailFile?'Uploading asset files…':'Saving asset…');
     let fileUrl=String(document.getElementById('assetFileUrl')?.value||'').trim();
+    let thumbnailUrl=String(document.getElementById('assetThumbnail')?.value||'').trim();
     let fileSize=String(document.getElementById('assetFileSize')?.value||'').trim();
     let fileType=String(document.getElementById('assetFileType')?.value||'').trim();
     if(file){
-      const uploaded=await uploadAdminFile('star-assets',file,'assets');
-      fileUrl=db.storage.from('star-assets').getPublicUrl(uploaded.path).data.publicUrl;
+      const uploaded=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,file,STAR_VISUALS_ASSET_FOLDER);
+      fileUrl=assetStorage().getPublicUrl(uploaded.path).data.publicUrl;
       fileSize=fileSize||`${(file.size/1024/1024).toFixed(1)} MB`;
       fileType=fileType||file.name.split('.').pop()?.toUpperCase()||'FILE';
     }
+    if(thumbnailFile){
+      const uploadedThumb=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,thumbnailFile,STAR_VISUALS_THUMBNAIL_FOLDER);
+      thumbnailUrl=assetStorage().getPublicUrl(uploadedThumb.path).data.publicUrl;
+    }
+    const externalDownloadUrl=String(document.getElementById('assetExternalDownload')?.value||'').trim();
     const payload={
       name:String(document.getElementById('assetName')?.value||'').trim(),
       description:String(document.getElementById('assetDescription')?.value||'').trim(),
-      category:String(document.getElementById('assetCustomCategory')?.value||document.getElementById('assetCategory')?.value||'Other Creative Assets').trim(),
+      category:String(document.getElementById('assetCategory')?.value||'Cinematic Reel Pack').trim(),
       software:String(document.getElementById('assetSoftware')?.value||'').trim(),
       file_type:fileType||'FILE',
       file_size:fileSize||'—',
-      thumbnail_url:String(document.getElementById('assetThumbnail')?.value||'assets/asset-pack/asset-library-cover.svg').trim(),
+      thumbnail_url:thumbnailUrl||'assets/asset-pack/asset-library-cover.svg',
       preview_url:String(document.getElementById('assetPreview')?.value||'').trim(),
       file_url:fileUrl,
+      external_download_url:externalDownloadUrl||null,
       access_type:String(document.getElementById('assetAccessType')?.value||'free').trim(),
       price:Number(document.getElementById('assetPrice')?.value||0),
       published:String(document.getElementById('assetPublished')?.value||'true')==='true',
       updated_at:new Date().toISOString()
     };
-    if(!payload.name||!payload.file_url){setAssetStatus('Asset name and either a file URL or uploaded file are required.',true);return;}
-    let result=assetEditId?.value
-      ?await db.from('asset_library').update(payload).eq('id',assetEditId.value)
-      :await db.from('asset_library').insert(payload);
+    if(!ASSET_LIBRARY_CATEGORIES.includes(payload.category)){setAssetStatus('Choose one of the six Asset Library categories.',true);return;}
+    if(!payload.name||(!payload.file_url&&!payload.external_download_url)){setAssetStatus('Asset name and either an uploaded/storage file, File URL, or External Download Link are required.',true);return;}
+    let result;
+    const savedAssetId=assetEditId?.value||'';
+    if(savedAssetId){
+      result=await db.from('asset_library').update(payload).eq('id',savedAssetId).select('id').single();
+    }else{
+      result=await db.from('asset_library').insert(payload).select('id').single();
+    }
     if(result.error)throw result.error;
-    assetForm.reset(); if(assetEditId)assetEditId.value=''; document.getElementById('assetThumbnail').value='assets/asset-pack/asset-library-cover.svg';
-    setAssetStatus('Asset saved. The library has been updated.'); await loadAdminAssets(); await loadAssetCatalog();
-  }catch(error){console.error('Asset save failed:',error);setAssetStatus(friendlyError(error),true);}
+    if(!result.data?.id&&!savedAssetId)throw new Error('Asset was saved but its database ID could not be returned.');
+    assetForm.reset();
+    if(assetEditId)assetEditId.value='';
+    document.getElementById('assetCategory').value='Cinematic Reel Pack';
+    document.getElementById('assetThumbnail').value='assets/asset-pack/asset-library-cover.svg';
+    setAssetStatus(payload.published?'Asset saved and published.':'Asset saved as draft.');
+    await loadAdminAssets();
+    await loadAssetCatalog();
+  }catch(error){
+    console.error('Asset save failed:',error);
+    const message=error?.message||friendlyError(error);
+    if(/external_download_url.*asset_library.*schema cache|asset_library.*external_download_url.*schema cache/i.test(message)){
+      setAssetStatus('The Asset Library table exists, but external_download_url is missing. Run supabase-asset-library-column-fix.sql in Supabase SQL Editor, then refresh this page.',true);
+    }else{
+      setAssetStatus(message,true);
+    }
+  }
 });
-
 
 document.getElementById('assetResetForm')?.addEventListener('click',()=>{
-  assetForm?.reset(); if(assetEditId)assetEditId.value=''; setAssetStatus('Ready to add a new resource.');
+  assetForm?.reset();
+  if(assetEditId)assetEditId.value='';
+  const category=document.getElementById('assetCategory'); if(category)category.value='Cinematic Reel Pack';
+  const thumb=document.getElementById('assetThumbnail'); if(thumb)thumb.value='assets/asset-pack/asset-library-cover.svg';
+  setAssetStatus('Ready to add a new Asset Library resource.');
 });
 
-document.getElementById('adminAssetList')?.addEventListener('click',async (event)=>{
+document.getElementById('adminAssetList')?.addEventListener('click',async(event)=>{
   const editButton=event.target.closest('[data-asset-edit]');
-  if(editButton && db){
+  if(editButton&&db){
     const {data,error}=await db.from('asset_library').select('*').eq('id',editButton.dataset.assetEdit).maybeSingle();
     if(error||!data){setAssetStatus(friendlyError(error||'Asset not found.'),true);return;}
     document.getElementById('assetEditId').value=data.id;
     document.getElementById('assetName').value=data.name||'';
     document.getElementById('assetDescription').value=data.description||'';
-    document.getElementById('assetCategory').value=[...document.getElementById('assetCategory').options].some(o=>o.value===data.category)?data.category:'Other Creative Assets'; document.getElementById('assetCustomCategory').value=[...document.getElementById('assetCategory').options].some(o=>o.value===data.category)?'':(data.category||'');
+    document.getElementById('assetCategory').value=ASSET_LIBRARY_CATEGORIES.includes(data.category)?data.category:'Cinematic Reel Pack';
     document.getElementById('assetSoftware').value=data.software||'';
     document.getElementById('assetFileType').value=data.file_type||'ZIP';
     document.getElementById('assetFileSize').value=data.file_size||'';
@@ -532,17 +659,19 @@ document.getElementById('adminAssetList')?.addEventListener('click',async (event
     document.getElementById('assetThumbnail').value=data.thumbnail_url||'';
     document.getElementById('assetPreview').value=data.preview_url||'';
     document.getElementById('assetFileUrl').value=data.file_url||'';
-    document.getElementById('assetPublished').value=data.published ? 'true' : 'false';
-    setAssetStatus('Asset loaded for editing.');
+    document.getElementById('assetExternalDownload').value=data.external_download_url||'';
+    document.getElementById('assetPublished').value=data.published?'true':'false';
+    setAssetStatus('Asset loaded for editing. Editing Service data is not modified.');
     return;
   }
   const deleteButton=event.target.closest('[data-asset-delete]');
-  if(deleteButton && db){
+  if(deleteButton&&db){
     const assetId=deleteButton.dataset.assetDelete;
     const {error}=await db.from('asset_library').delete().eq('id',assetId);
     if(error){setAssetStatus(friendlyError(error),true);return;}
-    setAssetStatus('Asset deleted from the library.');
+    setAssetStatus('Asset deleted from the Asset Library.');
     await loadAdminAssets();
+    await loadAssetCatalog();
   }
 });
 
@@ -641,28 +770,41 @@ async function loadAdminLessons(courseId){
   if(!courseId){list.innerHTML='<div class="admin-empty">Select a course to view lessons.</div>';return;}
   const {data,error}=await db.from('course_lessons').select('*').eq('course_id',courseId).order('lesson_order');
   if(error){list.innerHTML='<div class="admin-empty">Lessons could not be loaded.</div>';return;}
-  list.innerHTML=(data||[]).map(l=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${l.published?'Published':'Draft'} · ${escapeHtml(l.content_type||'file')}</span><h3>${escapeHtml(l.title)}</h3></div><button class="outline-btn" type="button" data-lesson-delete="${l.id}">Delete</button></div><div class="admin-request-grid"><div><span>ORDER</span><strong>${Number(l.lesson_order||0)}</strong></div><div><span>FILE</span><strong>${escapeHtml(l.file_path||'External URL')}</strong></div><div><span>STATUS</span><strong>${l.published?'LIVE':'DRAFT'}</strong></div></div></article>`).join('')||'<div class="admin-empty">No lessons attached to this course yet.</div>';
+  const lessonIds=(data||[]).map(l=>l.id);
+  const {data:materialRows}=lessonIds.length?await db.from('course_lesson_materials').select('lesson_id').in('lesson_id',lessonIds):{data:[]};
+  const materialCounts=new Map();(materialRows||[]).forEach(row=>materialCounts.set(row.lesson_id,(materialCounts.get(row.lesson_id)||0)+1));
+  list.innerHTML=(data||[]).map(l=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${l.published?'Published':'Draft'} · ${escapeHtml(l.content_type||'file')}</span><h3>${escapeHtml(l.title)}</h3></div><button class="outline-btn" type="button" data-lesson-delete="${l.id}">Delete</button></div><div class="admin-request-grid"><div><span>ORDER</span><strong>${Number(l.lesson_order||0)}</strong></div><div><span>VIDEO</span><strong>${escapeHtml(l.file_path||'External URL')}</strong></div><div><span>MATERIALS</span><strong>${materialCounts.get(l.id)||0}</strong></div><div><span>STATUS</span><strong>${l.published?'LIVE':'DRAFT'}</strong></div></div></article>`).join('')||'<div class="admin-empty">No lessons attached to this course yet.</div>';
 }
 
 async function saveLessonForm(event){
   event.preventDefault();if(!db)return;
   const courseId=document.getElementById('lessonCourseId')?.value;
   const file=document.getElementById('lessonFile')?.files?.[0]||null;
+  const materialFiles=[...(document.getElementById('lessonMaterials')?.files||[])];
   const externalUrl=document.getElementById('lessonExternalUrl')?.value.trim()||'';
+  const materialUrls=String(document.getElementById('lessonMaterialUrls')?.value||'').split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
   if(!courseId){setAdminFeatureStatus('lessonStatus','Select a course first.',true);return;}
-  if(!file&&!externalUrl){setAdminFeatureStatus('lessonStatus','Choose a video/file or provide an external URL.',true);return;}
+  if(!file&&!externalUrl){setAdminFeatureStatus('lessonStatus','Choose a video or provide an external lecture URL.',true);return;}
   try{
-    setAdminFeatureStatus('lessonStatus',file?'Uploading course file…':'Saving lesson…');
+    setAdminFeatureStatus('lessonStatus',file||materialFiles.length?'Uploading lecture and materials…':'Saving lecture…');
     let filePath=null, contentType=file?.type||'file';
     if(file){
       const uploaded=await uploadAdminFile('course-files',file,courseId);
       filePath=uploaded.path;
-      contentType=file.type.startsWith('video/')?'video':'file';
+      contentType='video';
     }
-    const {error}=await db.from('course_lessons').insert({course_id:courseId,title:document.getElementById('lessonTitle')?.value.trim(),lesson_order:Number(document.getElementById('lessonOrder')?.value||1),content_type:contentType,file_path:filePath,external_url:externalUrl||null,published:document.getElementById('lessonPublished')?.value==='true'});
+    const {data:lesson,error}=await db.from('course_lessons').insert({course_id:courseId,title:document.getElementById('lessonTitle')?.value.trim(),lesson_order:Number(document.getElementById('lessonOrder')?.value||1),content_type:contentType,file_path:filePath,external_url:externalUrl||null,published:document.getElementById('lessonPublished')?.value==='true'}).select('id').single();
     if(error)throw error;
+    const materialRows=[];
+    for(let i=0;i<materialFiles.length;i++){
+      const material=materialFiles[i];
+      const uploaded=await uploadAdminFile('course-files',material,`${courseId}/materials`);
+      materialRows.push({lesson_id:lesson.id,title:material.name,material_type:material.type||'file',file_path:uploaded.path,external_url:null,sort_order:i});
+    }
+    materialUrls.forEach((url,i)=>materialRows.push({lesson_id:lesson.id,title:`External material ${i+1}`,material_type:'external',file_path:null,external_url:url,sort_order:materialFiles.length+i}));
+    if(materialRows.length){const {error:materialError}=await db.from('course_lesson_materials').insert(materialRows);if(materialError)throw materialError;}
     document.getElementById('lessonForm')?.reset();
-    setAdminFeatureStatus('lessonStatus','Lesson uploaded and attached to the course.');
+    setAdminFeatureStatus('lessonStatus',`Lecture uploaded${materialRows.length?` with ${materialRows.length} material${materialRows.length===1?'':'s'}`:''}.`);
     await loadAdminLessons(courseId);
   }catch(error){console.error('Lesson upload failed:',error);setAdminFeatureStatus('lessonStatus',friendlyError(error),true);}
 }

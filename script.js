@@ -39,18 +39,16 @@ const authUnavailableMessage='Supabase is not connected yet. Add your real proje
 
 function ensureAuthOverlay(){
   const existing=document.getElementById('authOverlay');
-  if(existing){
-    const method=existing.querySelector('#emailMethod');
-    if(method&&!method.querySelector('[data-google-auth]')){
-      const google=document.createElement('button');
-      google.className='google-auth-btn';
-      google.type='button';
-      google.dataset.googleAuth='';
-      google.innerHTML='<span class="google-mark">G</span><span>Continue with Google</span>';
-      method.prepend(google);
-    }
-    return existing;
-  }
+  const isComplete=existing
+    && existing.querySelector('#emailMethod')
+    && existing.querySelector('#loginEmail')
+    && existing.querySelector('#loginPassword')
+    && existing.querySelector('#signupEmail')
+    && existing.querySelector('#signupPassword')
+    && existing.querySelector('#signupPasswordConfirm')
+    && existing.querySelector('[data-google-auth]');
+  if(existing && isComplete)return existing;
+  if(existing)existing.remove();
   const host=document.createElement('div');
   host.innerHTML=`<div class="auth-overlay" id="authOverlay" aria-hidden="true"><div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authTitle"><button class="auth-close" type="button" aria-label="Close" data-close-auth>×</button><div class="auth-mark">✦</div><p class="eyebrow">WELCOME TO STAR VISUALS</p><h2 id="authTitle">Your creative<br><em>studio starts here.</em></h2><p class="auth-sub">Sign in or create your account with your email and password.</p><div class="auth-tabs"><button class="active" type="button" data-tab="email-login">Log in</button><button type="button" data-tab="email-signup">Sign up</button></div><div class="auth-method" id="emailMethod"><button class="google-auth-btn" type="button" data-google-auth><span class="google-mark">G</span><span>Continue with Google</span></button><div class="auth-divider"><span>or use email</span></div><form id="loginForm" class="auth-form"><label>Email<input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com" required></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password" required></label><button class="forgot-link" type="button" id="forgotPasswordBtn">Forgot password?</button><button class="auth-submit" type="submit">Log in with email <span>→</span></button></form><form id="signupForm" class="auth-form hidden"><label>Name<input id="signupName" type="text" autocomplete="name" placeholder="Your name" required></label><label>Email<input id="signupEmail" type="email" autocomplete="email" placeholder="you@example.com" required></label><label>Password<input id="signupPassword" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters" required></label><label>Confirm password<input id="signupPasswordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="Re-enter your password" required></label><button class="auth-submit" type="submit">Create account <span>→</span></button></form><form id="resetForm" class="auth-form hidden"><label>Email<input id="resetEmail" type="email" autocomplete="email" placeholder="you@example.com" required></label><button class="auth-submit" type="submit">Send reset link <span>→</span></button><button class="text-button auth-change" type="button" id="backToLoginBtn">Back to log in</button></form><form id="updatePasswordForm" class="auth-form hidden"><label>New password<input id="newPassword" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters" required></label><label>Confirm password<input id="newPasswordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="Re-enter your password" required></label><button class="auth-submit" type="submit">Update password <span>→</span></button></form></div><button class="guest-btn" type="button" data-close-auth>Continue browsing</button><p class="auth-note" id="authStatus">Secure authentication powered by Supabase.</p></div></div>`;
   document.body.appendChild(host.firstElementChild);
@@ -82,7 +80,7 @@ document.querySelectorAll('.auth-tabs button').forEach((button,index)=>{
 function setAuthStatus(m,err=false){if(authStatus){authStatus.textContent=m;authStatus.classList.toggle('error',err)}}
 function setAuthBusy(form,busy,label){const button=form?.querySelector('button[type="submit"]');if(!button)return;button.disabled=busy;if(busy){button.dataset.defaultLabel=button.innerHTML;button.innerHTML=`${label} <span>...</span>`;}else if(button.dataset.defaultLabel){button.innerHTML=button.dataset.defaultLabel;delete button.dataset.defaultLabel;}}
 async function withAuthTimeout(request){let timer;try{return await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Authentication is taking too long. Check your internet connection and try again.')),15000)})])}finally{clearTimeout(timer)}}
-async function continueWithGoogle(){if(!db){setAuthStatus(authUnavailableMessage,true);return}const buttons=[...document.querySelectorAll('[data-google-auth]')];buttons.forEach(button=>{button.disabled=true});setAuthStatus('Connecting to Google…');try{const redirectTarget=authReturnTo||location.pathname;const redirectTo=location.origin==='null'?undefined:`${location.origin}${redirectTarget}`;const options=redirectTo?{redirectTo}:{};const {error}=await withAuthTimeout(db.auth.signInWithOAuth({provider:'google',options}));if(error)setAuthStatus(friendlyError(error),true)}catch(error){setAuthStatus(friendlyError(error),true)}finally{buttons.forEach(button=>{button.disabled=false})}}
+async function continueWithGoogle(){if(!db){setAuthStatus(authUnavailableMessage,true);return}const buttons=[...document.querySelectorAll('[data-google-auth]')];buttons.forEach(button=>{button.disabled=true});setAuthStatus('Connecting to Google…');try{const redirectTarget=sanitizeReturnTarget(authReturnTo)||location.pathname.split('/').pop()||'index.html';const redirectTo=location.origin==='null'?undefined:`${location.origin}/${redirectTarget.replace(/^\/+/, '')}`;const options=redirectTo?{redirectTo}:{};const {error}=await withAuthTimeout(db.auth.signInWithOAuth({provider:'google',options}));if(error)setAuthStatus(friendlyError(error),true)}catch(error){setAuthStatus(friendlyError(error),true)}finally{buttons.forEach(button=>{button.disabled=false})}}
 function showPasswordUpdate(){
   overlay?.classList.add('open'); overlay?.setAttribute('aria-hidden','false'); document.body.classList.add('modal-open');
   loginForm?.classList.add('hidden'); signupForm?.classList.add('hidden'); resetForm?.classList.add('hidden'); updatePasswordForm?.classList.remove('hidden');
@@ -125,14 +123,20 @@ function switchAuthMode(mode){
   loginForm?.classList.toggle('hidden',signup);
   setAuthStatus('Your credentials are securely handled by Supabase.');
 }
+function sanitizeReturnTarget(value){
+  if(!value)return '';
+  try{
+    const raw=decodeURIComponent(value);
+    if(raw.startsWith('http://')||raw.startsWith('https://')||raw.startsWith('//'))return '';
+    const clean=raw.split('#')[0].split('?')[0].replace(/^\/+/, '');
+    const allowed=['index.html','services.html','courses.html','assets.html','dashboard.html','project.html','admin.html','course-detail.html','lesson.html'];
+    return allowed.includes(clean)?raw:'';
+  }catch(_){return ''}
+}
 async function navigateAfterAuth(defaultTarget='dashboard.html'){
-  const target=authReturnTo;
+  const target=sanitizeReturnTarget(authReturnTo);
   authReturnTo='';
-  if(target){
-    const destination=decodeURIComponent(target);
-    if(!location.pathname.endsWith(destination)) location.href=destination;
-    return;
-  }
+  if(target){ location.href=target; return; }
   if(!isLoginPage)return;
   let destination=defaultTarget;
   if(db){
@@ -142,7 +146,7 @@ async function navigateAfterAuth(defaultTarget='dashboard.html'){
       if(profile?.role==='admin'||profile?.is_admin===true) destination='admin.html';
     }
   }
-  if(!location.pathname.endsWith(destination)) location.href=destination;
+  location.replace(destination);
 }
 
 document.querySelectorAll('[data-open-auth]').forEach(b=>b.addEventListener('click',()=>openAuth(b.dataset.openAuth||'email-login')));
@@ -161,7 +165,8 @@ overlay?.addEventListener('click',e=>{if(e.target===overlay)closeAuth()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAuth()});
 if(isLoginPage){
   const params=new URLSearchParams(location.search);
-  authReturnTo=params.get('returnTo')||'';
+  if(params.get('logged-out')==='1')setAuthStatus('You have been logged out successfully.');
+  authReturnTo=sanitizeReturnTarget(params.get('returnTo')||'');
   switchAuthMode(params.get('mode')==='signup'?'email-signup':'email-login');
 }
 
@@ -236,39 +241,49 @@ signupForm?.addEventListener('submit',async e=>{
 
 document.querySelectorAll('video.showreel').forEach(v=>v.addEventListener('error',()=>{v.hidden=true;v.nextElementSibling?.removeAttribute('hidden')}));
 async function loadCoursesFromDatabase(){
-  if(!db)return;
-  const buttons=[...document.querySelectorAll('.course-action')];
-  if(!buttons.length)return;
-  const {data,error}=await db.from('courses').select('id,title,description,duration,delivery,price_inr,slug,category').eq('published',true).order('sort_order');
+  const grid=document.getElementById('courseCatalog')||document.querySelector('.modern-courses');
+  if(!grid)return;
+  if(!db){
+    grid.innerHTML='<div class="course-lesson-state error">Supabase is not connected. Courses cannot be loaded.</div>';
+    return;
+  }
+
+  grid.innerHTML='<div class="course-lesson-state">Loading courses…</div>';
+  const {data,error}=await db.from('courses')
+    .select('id,title,description,duration,delivery,price_inr,slug,category,sort_order,published,created_at')
+    .eq('published',true)
+    .order('sort_order',{ascending:true})
+    .order('created_at',{ascending:true});
+
   if(error){
     console.error('Course catalog load failed:',error);
-    buttons.forEach(b=>{b.disabled=true;b.dataset.courseId='';b.setAttribute('aria-disabled','true');});
+    grid.innerHTML=`<div class="course-lesson-state error">${escapeHtml(friendlyError(error))}</div>`;
     return;
   }
   if(!data?.length){
-    buttons.forEach(b=>{b.disabled=true;b.dataset.courseId='';b.textContent='No courses available';});
+    grid.innerHTML='<div class="course-lesson-state">No published courses are available yet.</div>';
     return;
   }
-  buttons.forEach((b,i)=>{
-    const c=data[i];
-    const card=b.closest('.course-card');
-    if(!c||!card)return;
-    b.disabled=false;
-    b.dataset.courseId=c.id;
-    b.dataset.course=c.title;
-    card.dataset.courseId=c.id;
-    card.dataset.courseTitle=c.title;
-    card.setAttribute('tabindex','0');
-    card.setAttribute('role','link');
-    card.setAttribute('aria-label',`Open ${c.title}`);
-    const h=card.querySelector('h3');
-    if(h){const words=c.title.trim().split(/\s+/);const split=Math.max(1,Math.ceil(words.length/2));h.innerHTML=`${escapeHtml(words.slice(0,split).join(' '))}<br><em>${escapeHtml(words.slice(split).join(' '))}</em>`}
-    if(c.description)card.querySelector('p')?.replaceChildren(document.createTextNode(c.description));
-    const m=card.querySelectorAll('.course-meta span');
-    if(m[0]&&c.duration)m[0].textContent=c.duration;
-    if(m[1]&&c.delivery)m[1].textContent=c.delivery;
-    b.innerHTML='View course <span>↗</span>';
-  });
+
+  grid.innerHTML=data.map((course,index)=>{
+    const title=escapeHtml(course.title||'Course');
+    const description=escapeHtml(course.description||'Explore the lessons, lectures and downloadable course materials.');
+    const duration=escapeHtml(course.duration||'SELF-PACED');
+    const delivery=escapeHtml(course.delivery||'LESSONS + PROJECTS');
+    const category=escapeHtml((course.category||'COURSE').toUpperCase());
+    const badge=index===0?'FEATURED':'AVAILABLE';
+    const price=Number(course.price_inr||0);
+    const priceText=price>0?`₹${price.toLocaleString('en-IN')}`:'ENQUIRE';
+    return `<article class="course-card${index===0?' featured':''}" data-course-id="${escapeHtml(course.id)}" data-course-title="${title}" tabindex="0" role="link" aria-label="Open ${title}">
+      <div class="course-top"><span>${String(index+1).padStart(2,'0')} / ${category}</span><b>${badge}</b></div>
+      <div class="course-icon">✦</div>
+      <h3>${title}</h3>
+      <p>${description}</p>
+      <div class="course-meta"><span>${duration}</span><span>${delivery}</span></div>
+      <div class="course-meta"><span>${priceText}</span><span>COURSE CONTENT</span></div>
+      <button class="course-action" type="button" data-course="${title}" data-course-id="${escapeHtml(course.id)}">View course <span>↗</span></button>
+    </article>`;
+  }).join('');
 }
 
 function openCourseById(courseId){
@@ -297,6 +312,23 @@ courseGrid?.addEventListener('keydown',event=>{
 });
 
 function animateSocialCounters(){document.querySelectorAll('.social-count').forEach((node)=>{const target=Number(node.dataset.base||0);const format=(value)=>{if(value>=1000000)return `${(value/1000000).toFixed(1)}M+`;if(value>=1000)return `${(value/1000).toFixed(value>=100000?0:1)}K+`;return `${Math.round(value)}+`};const started=performance.now();const duration=1400;const step=(now)=>{const progress=Math.min(1,(now-started)/duration);const eased=1-Math.pow(1-progress,3);node.textContent=format(target*eased);if(progress<1)requestAnimationFrame(step)};requestAnimationFrame(step);});}
+async function handleUserLogout(){
+  if(!db){toast(authUnavailableMessage);return;}
+  const button=document.getElementById('logoutBtn');
+  if(button){button.disabled=true;button.dataset.defaultLabel=button.innerHTML;button.textContent='Logging out…';}
+  try{
+    const {error}=await withAuthTimeout(db.auth.signOut({scope:'local'}));
+    if(error)throw error;
+    try{localStorage.removeItem('starVisualsAuthPrompted');}catch(_){}
+    location.href='index.html?logged-out=1';
+  }catch(error){
+    console.error('User logout failed:',error);
+    if(button){button.disabled=false;button.innerHTML=button.dataset.defaultLabel||'Log out';delete button.dataset.defaultLabel;}
+    toast(friendlyError(error));
+  }
+}
+document.getElementById('logoutBtn')?.addEventListener('click',handleUserLogout);
+
 async function loadStudio(){
   if(!db)return;
   const {data:{session}}=await db.auth.getSession();
@@ -384,36 +416,50 @@ projectForm?.addEventListener('submit',async e=>{
   toast('Project enquiry sent to STAR VISUALS.');
 });
 
-const ASSET_LIBRARY_CATEGORIES=[
-  'Cinematic Reel Pack',
-  'Premium Motion Pack',
-  'Thumbnail Formula Pack',
-  'Reel Transition Pack',
-  'Cinematic LUT Pack',
-  'Creator SFX Bundle'
+const DEFAULT_ASSET_CATEGORIES=[
+  {id:'cinematic-reel-pack',name:'Cinematic Reel Pack',description:'Cinematic reel templates and storytelling resources.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'premium-motion-pack',name:'Premium Motion Pack',description:'Premium motion graphics, presets and animation resources.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'thumbnail-formula-pack',name:'Thumbnail Formula Pack',description:'Thumbnail systems and visual formulas for creators.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'reel-transition-pack',name:'Reel Transition Pack',description:'Transitions and finishing assets for short-form edits.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'cinematic-lut-pack',name:'Cinematic LUT Pack',description:'Cinematic colour presets and LUT resources.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'creator-sfx-bundle',name:'Creator SFX Bundle',description:'Impacts, whooshes, ambience and creator sound effects.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'creator-asset-pack',name:'Creator Asset Pack',description:'General creator resources, overlays and production assets.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'}
 ];
-const ASSET_LIBRARY_CATEGORY_META={
-  'Cinematic Reel Pack':'Cinematic reel templates and storytelling resources.',
-  'Premium Motion Pack':'Premium motion graphics, presets and animation resources.',
-  'Thumbnail Formula Pack':'Thumbnail systems and visual formulas for creators.',
-  'Reel Transition Pack':'Transitions and finishing assets for short-form edits.',
-  'Cinematic LUT Pack':'Cinematic colour presets and LUT resources.',
-  'Creator SFX Bundle':'Impacts, whooshes, ambience and creator sound effects.'
-};
-const assetCatalogFallback=[
-  {id:'cinematic-reel-pack',name:'Cinematic Reel Pack',description:'12 layouts built for fast reel storytelling and hero cuts.',category:'Cinematic Reel Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-01.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'48 MB',software:'Premiere Pro',access_type:'free',price:0,published:true},
-  {id:'premium-motion-pack',name:'Premium Motion Pack',description:'25 motion preset animations for transitions, reveals and text movement.',category:'Premium Motion Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-03.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'96 MB',software:'After Effects',access_type:'premium',price:199,published:true},
-  {id:'thumbnail-templates',name:'Thumbnail Formula Pack',description:'High-contrast thumbnail layouts for content and shorts growth.',category:'Thumbnail Formula Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/work-03-poster.jpg',file_url:'assets/star-visuals-asset-pack.zip',file_type:'PSD',file_size:'32 MB',software:'Photoshop',access_type:'premium',price:149,published:true},
-  {id:'reels-transitions',name:'Reel Transition Pack',description:'Fast-moving transitions and sparkle moments for social media edits.',category:'Reel Transition Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/project-04.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'52 MB',software:'Premiere Pro',access_type:'free',price:0,published:true},
-  {id:'cinematic-luts',name:'Cinematic LUT Pack',description:'Warm contrast and highlight balancing presets for reels and interviews.',category:'Cinematic LUT Pack',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/work-04-poster.jpg',file_url:'assets/star-visuals-asset-pack.zip',file_type:'CUBE',file_size:'14 MB',software:'DaVinci Resolve',access_type:'premium',price:99,published:true},
-  {id:'sfx-bundle',name:'Creator SFX Bundle',description:'Clean cinematic impacts, whooshes and ambience pack for edit finishing.',category:'Creator SFX Bundle',thumbnail_url:'assets/asset-pack/asset-library-cover.svg',preview_url:'assets/asset-pack/star-visuals-showreel.mp4',file_url:'assets/star-visuals-asset-pack.zip',file_type:'ZIP',file_size:'70 MB',software:'Premiere Pro / Audition',access_type:'free',price:0,published:true}
-];
-window.STAR_VISUALS_ASSET_CATALOG=(window.STAR_VISUALS_ASSET_CATALOG||assetCatalogFallback).length?window.STAR_VISUALS_ASSET_CATALOG||assetCatalogFallback:assetCatalogFallback;
+let ASSET_LIBRARY_CATEGORIES=DEFAULT_ASSET_CATEGORIES.map(c=>c.name);
+let ASSET_LIBRARY_CATEGORY_META=Object.fromEntries(DEFAULT_ASSET_CATEGORIES.map(c=>[c.name,c.description]));
+let ASSET_LIBRARY_CATEGORY_OBJECTS=DEFAULT_ASSET_CATEGORIES.map(c=>({...c}));
+
+const assetCatalogFallback=[];
+window.STAR_VISUALS_ASSET_CATEGORIES=window.STAR_VISUALS_ASSET_CATEGORIES||DEFAULT_ASSET_CATEGORIES;
+
+function setAssetCategories(categories){
+  const cleaned=(categories||[]).map((c)=>({
+    id:c.id||String(c.name||'category').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+    name:String(c.name||'').trim(),
+    description:String(c.description||'').trim()||'Creative assets for this category.',
+    thumbnail_url:c.thumbnail_url||'assets/asset-pack/asset-library-cover.svg'
+  })).filter(c=>c.name);
+  const seen=new Set();
+  ASSET_LIBRARY_CATEGORY_OBJECTS=cleaned.filter(c=>{const key=c.name.toLowerCase();if(seen.has(key))return false;seen.add(key);return true;});
+  ASSET_LIBRARY_CATEGORIES=ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>c.name);
+  ASSET_LIBRARY_CATEGORY_META=Object.fromEntries(ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>[c.name,c.description]));
+  window.STAR_VISUALS_ASSET_CATEGORIES=ASSET_LIBRARY_CATEGORY_OBJECTS;
+}
+setAssetCategories(window.STAR_VISUALS_ASSET_CATEGORIES);
+
+function dedupeAssets(assets){
+  const seen=new Set();
+  return (assets||[]).map(normalizeAsset).filter(item=>{
+    const signature=[item.name,item.category,item.file_url||item.external_download_url||'',item.thumbnail_url||''].map(v=>String(v).trim().toLowerCase()).join('|');
+    if(seen.has(signature))return false;
+    seen.add(signature);return true;
+  });
+}
 
 function normalizeAsset(asset){
   const item={...asset};
   item.id=item.id||String(item.name||'asset').toLowerCase().replace(/[^a-z0-9]+/g,'-');
-  item.category=ASSET_LIBRARY_CATEGORIES.includes(item.category)?item.category:'Cinematic Reel Pack';
+  item.category=String(item.category||'').trim()||ASSET_LIBRARY_CATEGORIES[0]||'Creator Asset Pack';
   item.access_type=(item.access_type||item.accessType||'free').toLowerCase();
   item.price=Number(item.price||0);
   item.file_size=item.file_size||item.fileSize||'—';
@@ -466,33 +512,82 @@ function renderAssetCards(containerId, assets){
   list.innerHTML=assetCardsMarkup(catalog);
 }
 
-function renderAssetCategorySections(hostId, assets){
+function assetCategorySlug(name){return encodeURIComponent(String(name||'').trim());}
+function renderAssetCategoryCards(hostId, assets){
   const host=document.getElementById(hostId); if(!host)return;
-  const catalog=(assets||[]).map(normalizeAsset);
-  const sections=ASSET_LIBRARY_CATEGORIES.map(category=>({category,assets:catalog.filter(asset=>asset.category===category)})).filter(section=>section.assets.length);
-  host.innerHTML=sections.length?sections.map(section=>`<section class="service-asset-group"><div class="service-asset-group-head"><div><h4>${escapeHtml(section.category)}</h4><p>${escapeHtml(ASSET_LIBRARY_CATEGORY_META[section.category])}</p></div></div><div class="asset-grid">${assetCardsMarkup(section.assets)}</div></section>`).join(''):'<div class="asset-empty">No published assets are available yet.</div>';
+  const counts=new Map();
+  dedupeAssets(assets||[]).forEach(a=>counts.set(a.category,(counts.get(a.category)||0)+1));
+  host.innerHTML=ASSET_LIBRARY_CATEGORY_OBJECTS.map(category=>`<a class="asset-category-card" href="assets.html?category=${assetCategorySlug(category.name)}" data-asset-category="${escapeHtml(category.name)}">
+    <div class="asset-category-card-thumb" style="background-image:url('${escapeHtml(category.thumbnail_url)}')"></div>
+    <div class="asset-category-card-body"><span class="eyebrow">ASSET CATEGORY</span><h4>${escapeHtml(category.name)}</h4><p>${escapeHtml(category.description)}</p><strong>${counts.get(category.name)||0} asset${counts.get(category.name)===1?'':'s'} · View pack →</strong></div>
+  </a>`).join('');
+}
+
+function renderAssetCategorySections(hostId, assets, selectedCategory=''){
+  const host=document.getElementById(hostId); if(!host)return;
+  const catalog=dedupeAssets(assets||[]);
+  const sections=ASSET_LIBRARY_CATEGORY_OBJECTS
+    .map(category=>({category:category.name,assets:catalog.filter(asset=>asset.category===category.name)}))
+    .filter(section=>section.assets.length && (!selectedCategory||section.category===selectedCategory));
+  host.innerHTML=sections.length?sections.map(section=>`<section class="service-asset-group" id="asset-category-${escapeHtml(section.category).replace(/[^a-z0-9]+/gi,'-')}"><div class="service-asset-group-head"><div><p class="eyebrow">CATEGORY</p><h4>${escapeHtml(section.category)}</h4><p>${escapeHtml(ASSET_LIBRARY_CATEGORY_META[section.category]||'')}</p></div><strong>${section.assets.length} asset${section.assets.length===1?'':'s'}</strong></div><div class="asset-grid">${assetCardsMarkup(section.assets)}</div></section>`).join(''):'<div class="asset-empty">No published assets are available in this category yet.</div>';
+}
+
+function renderAssetCategorySelect(){
+  const select=document.getElementById('assetCategory'); if(!select)return;
+  const current=select.value;
+  select.innerHTML=ASSET_LIBRARY_CATEGORIES.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('');
+  if(current&&ASSET_LIBRARY_CATEGORIES.includes(current))select.value=current;
+}
+
+async function loadAssetCategories(){
+  if(!db){setAssetCategories(DEFAULT_ASSET_CATEGORIES);renderAssetCategorySelect();return;}
+  const {data,error}=await db.from('asset_categories').select('*').eq('published',true).order('sort_order').order('created_at');
+  if(error){
+    console.warn('Asset categories table unavailable; using default categories.',error);
+    setAssetCategories(DEFAULT_ASSET_CATEGORIES);
+  }else if(data?.length){
+    setAssetCategories(data);
+  }else{
+    setAssetCategories(DEFAULT_ASSET_CATEGORIES);
+  }
+  renderAssetCategorySelect();
 }
 
 async function loadAssetCatalog(){
   const catalogElement=document.getElementById('assetLibraryGrid');
-  const categoryHost=document.getElementById('servicesAssetSections')||document.getElementById('assetLibrarySections');
-  if(!catalogElement&&!categoryHost)return;
-  let assets=[...assetCatalogFallback];
+  const categoryHost=document.getElementById('assetLibrarySections')||document.getElementById('servicesAssetSections');
+  const categoryCards=document.getElementById('assetCategoryCards');
+  if(!catalogElement&&!categoryHost&&!categoryCards)return;
+  await loadAssetCategories();
+  let assets=[];
   if(db){
     const {data,error}=await db.from('asset_library').select('*').eq('published',true).order('created_at',{ascending:false});
-    if(error){
-      console.error('Public Asset Library load failed:',error);
-      assets=[];
-    }else{
-      assets=(data||[]).map(normalizeAsset);
-    }
+    if(error){console.error('Public Asset Library load failed:',error);}
+    else assets=data||[];
   }
-  assets=assets.map(normalizeAsset);
+  assets=dedupeAssets(assets);
   window.STAR_VISUALS_ASSET_CATALOG=assets;
-  if(categoryHost)renderAssetCategorySections(categoryHost.id,assets);
-  if(catalogElement)renderAssetCards('assetLibraryGrid',assets);
-  const categoryRows=document.querySelectorAll('.asset-category-row');
-  categoryRows.forEach(row=>{row.innerHTML=ASSET_LIBRARY_CATEGORIES.map(c=>`<span class="asset-category-tag">${escapeHtml(c)}</span>`).join('');});
+  const params=new URLSearchParams(location.search);
+  const requestedCategory=params.get('category')||'';
+  const validCategory=ASSET_LIBRARY_CATEGORIES.find(name=>name.toLowerCase()===requestedCategory.trim().toLowerCase())||'';
+  if(categoryCards)renderAssetCategoryCards('assetCategoryCards',assets);
+  if(categoryHost)renderAssetCategorySections(categoryHost.id,assets,validCategory);
+  if(catalogElement)renderAssetCards('assetLibraryGrid',validCategory?assets.filter(a=>a.category===validCategory):assets);
+
+  const selection=document.getElementById('assetCategorySelection');
+  if(selection)selection.textContent=validCategory||'All categories';
+  const showAll=document.getElementById('assetShowAll');
+  if(showAll&&!showAll.dataset.wired){
+    showAll.dataset.wired='1';
+    showAll.addEventListener('click',()=>{
+      history.pushState({},'',location.pathname+'#asset-library');
+      if(selection)selection.textContent='All categories';
+      if(categoryHost)renderAssetCategorySections(categoryHost.id,window.STAR_VISUALS_ASSET_CATALOG||[]);
+      if(catalogElement)renderAssetCards('assetLibraryGrid',window.STAR_VISUALS_ASSET_CATALOG||[]);
+      categoryHost?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  }
+
 }
 
 async function loadMyAssets(){
@@ -556,6 +651,66 @@ async function loadAdminAssets(){
   list.innerHTML=data.map((asset)=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(asset.published?'Published':'Draft')}</span><h3>${escapeHtml(asset.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-asset-edit="${escapeHtml(asset.id)}">Edit</button><button class="outline-btn" type="button" data-asset-delete="${escapeHtml(asset.id)}">Delete</button></div></div><div class="admin-request-grid"><div><span>Asset Library category</span><strong>${escapeHtml(asset.category||'Cinematic Reel Pack')}</strong></div><div><span>Access</span><strong>${escapeHtml(asset.access_type||'free')}</strong></div><div><span>Download</span><strong>${asset.external_download_url?'External link':asset.file_url?'Storage file':'Not set'}</strong></div></div><div class="admin-brief"><span>DETAILS</span><p>${escapeHtml(asset.description||'No description yet.')}</p></div></article>`).join('');
 }
 
+async function loadAdminAssetCategories(){
+  const list=document.getElementById('adminAssetCategoryList');
+  if(!db||(!list&&!document.getElementById('assetCategory')))return;
+  await loadAssetCategories();
+  if(list){
+    list.innerHTML=ASSET_LIBRARY_CATEGORY_OBJECTS.map(category=>{
+      const count=(window.STAR_VISUALS_ASSET_CATALOG||[]).filter(a=>a.category===category.name).length;
+      return `<article class="asset-category-admin-card"><div class="asset-category-card-thumb" style="background-image:url('${escapeHtml(category.thumbnail_url)}')"></div><div><span class="eyebrow">${count} ASSETS</span><h4>${escapeHtml(category.name)}</h4><p>${escapeHtml(category.description)}</p></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-asset-category-edit="${escapeHtml(String(category.id))}">Edit</button>${!DEFAULT_ASSET_CATEGORIES.some(c=>c.name===category.name)?`<button class="outline-btn" type="button" data-asset-category-delete="${escapeHtml(String(category.id))}">Delete</button>`:''}<button class="btn" type="button" data-asset-category-upload="${escapeHtml(category.name)}">Upload asset</button></div></article>`;
+    }).join('');
+  }
+  renderAssetCategorySelect();
+}
+
+function setAssetCategoryStatus(message,error=false){
+  const el=document.getElementById('assetCategoryStatus');if(el){el.textContent=message;el.classList.toggle('error',Boolean(error));}
+}
+document.getElementById('assetCategoryForm')?.addEventListener('submit',async(event)=>{
+  event.preventDefault(); if(!db){setAssetCategoryStatus('Connect Supabase before managing categories.',true);return;}
+  const id=document.getElementById('assetCategoryEditId')?.value||'';
+  const name=document.getElementById('assetCategoryName')?.value.trim();
+  const description=document.getElementById('assetCategoryDescription')?.value.trim();
+  let thumbnail=document.getElementById('assetCategoryThumbnail')?.value.trim()||'assets/asset-pack/asset-library-cover.svg';
+  const thumbFile=document.getElementById('assetCategoryUploadThumbnail')?.files?.[0];
+  try{
+    if(!name){setAssetCategoryStatus('Category name is required.',true);return;}
+    if(thumbFile){
+      const uploaded=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,thumbFile,STAR_VISUALS_THUMBNAIL_FOLDER);
+      thumbnail=assetStorage().getPublicUrl(uploaded.path).data.publicUrl;
+    }
+    const payload={name,description,thumbnail_url:thumbnail,published:true,sort_order:ASSET_LIBRARY_CATEGORY_OBJECTS.length,updated_at:new Date().toISOString()};
+    const result=id?await db.from('asset_categories').update(payload).eq('id',id):await db.from('asset_categories').insert(payload);
+    if(result.error)throw result.error;
+    document.getElementById('assetCategoryForm').reset();document.getElementById('assetCategoryEditId').value='';
+    setAssetCategoryStatus('Category saved. You can now upload assets into it.');
+    await loadAssetCategories();await loadAdminAssetCategories();await loadAssetCatalog();
+  }catch(error){console.error(error);setAssetCategoryStatus(friendlyError(error),true);}
+});
+document.getElementById('assetCategoryReset')?.addEventListener('click',()=>{
+  document.getElementById('assetCategoryForm')?.reset();document.getElementById('assetCategoryEditId').value='';setAssetCategoryStatus('Ready to create a new category.');
+});
+document.getElementById('adminAssetCategoryList')?.addEventListener('click',async(event)=>{
+  const upload=event.target.closest('[data-asset-category-upload]');
+  if(upload){
+    const select=document.getElementById('assetCategory'); if(select){select.value=upload.dataset.assetCategory;document.getElementById('assetName')?.focus();}
+    document.getElementById('assetForm')?.scrollIntoView({behavior:'smooth',block:'start'});setAssetStatus(`Ready to upload an asset into ${upload.dataset.assetCategory}.`);return;
+  }
+  const edit=event.target.closest('[data-asset-category-edit]');
+  if(edit&&db){
+    const {data,error}=await db.from('asset_categories').select('*').eq('id',edit.dataset.assetCategoryEdit).maybeSingle();
+    if(error||!data){setAssetCategoryStatus('This category is one of the built-in categories and can be changed by editing its assets.',true);return;}
+    document.getElementById('assetCategoryEditId').value=data.id;document.getElementById('assetCategoryName').value=data.name||'';document.getElementById('assetCategoryDescription').value=data.description||'';document.getElementById('assetCategoryThumbnail').value=data.thumbnail_url||'';setAssetCategoryStatus('Category loaded for editing.');return;
+  }
+  const del=event.target.closest('[data-asset-category-delete]');
+  if(del&&db&&confirm('Delete this category? Assets inside it will remain but need to be moved to another category.')){
+    const {error}=await db.from('asset_categories').delete().eq('id',del.dataset.assetCategoryDelete);
+    if(error){setAssetCategoryStatus(friendlyError(error),true);return;}
+    await loadAssetCategories();await loadAdminAssetCategories();await loadAssetCatalog();setAssetCategoryStatus('Category deleted.');
+  }
+});
+
 const assetForm=document.getElementById('assetForm');
 const assetEditId=document.getElementById('assetEditId');
 async function uploadAdminFile(bucket,file,folder){
@@ -605,7 +760,7 @@ assetForm?.addEventListener('submit',async(event)=>{
       published:String(document.getElementById('assetPublished')?.value||'true')==='true',
       updated_at:new Date().toISOString()
     };
-    if(!ASSET_LIBRARY_CATEGORIES.includes(payload.category)){setAssetStatus('Choose one of the six Asset Library categories.',true);return;}
+    if(!ASSET_LIBRARY_CATEGORIES.includes(payload.category)){setAssetStatus('Choose a valid Asset Library category.',true);return;}
     if(!payload.name||(!payload.file_url&&!payload.external_download_url)){setAssetStatus('Asset name and either an uploaded/storage file, File URL, or External Download Link are required.',true);return;}
     let result;
     const savedAssetId=assetEditId?.value||'';
@@ -844,7 +999,7 @@ async function loadAdminStudio(){
   if(!document.getElementById('adminServiceList')||!db)return;
   const admin=await isCurrentUserAdmin();
   if(!admin){location.href='dashboard.html';return;}
-  await Promise.all([loadAdminServices(),loadAdminCourses(),loadAdminLessons(document.getElementById('lessonCourseId')?.value||'')]);
+  await Promise.all([loadAdminServices(),loadAdminCourses(),loadAdminLessons(document.getElementById('lessonCourseId')?.value||''),loadAssetCategories()]);
   setupAdminStudio();
 }
 
@@ -857,14 +1012,14 @@ async function init(){
   await loadStudio();
   if(document.getElementById('myAssetList'))await loadMyAssets();
   if(adminRequests)await loadAdminRequests();
-  if(document.getElementById('adminAssetList'))await loadAdminAssets();
+  if(document.getElementById('adminAssetList')){await loadAssetCategories();await loadAdminAssets();}
   if(document.getElementById('adminServiceList'))await loadAdminStudio();
   if(db)db.auth.onAuthStateChange(async(event)=>{
     if(event==='PASSWORD_RECOVERY')showPasswordUpdate();
     if(event==='SIGNED_IN'&&isLoginPage)await navigateAfterAuth();
     await loadStudio();
     if(adminRequests)await loadAdminRequests();
-    if(document.getElementById('adminAssetList'))await loadAdminAssets();
+    if(document.getElementById('adminAssetList')){await loadAssetCategories();await loadAdminAssets();}
     if(document.getElementById('adminServiceList'))await loadAdminStudio();
     await loadPublicServices();
     if(document.getElementById('myAssetList'))await loadMyAssets();

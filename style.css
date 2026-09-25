@@ -364,3 +364,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .star-bottom-nav a:focus-visible{outline:2px solid var(--gold2);outline-offset:-2px}
 }
 @media (prefers-reduced-motion:reduce){.star-bottom-nav__item,.star-bottom-nav__icon{transition:none}}
+
+/* MOBILE NAV FIX: keep the header/brand, use ONLY the YouTube-style bottom nav. */
+@media (max-width:900px){
+  .header .desktop-nav,
+  .header .header-right,
+  .header .menu,
+  .header .mobile-nav,
+  .mobile-nav{
+    display:none !important;
+  }
+  .header{justify-content:flex-start;}
+}

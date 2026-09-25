@@ -107,8 +107,11 @@ function ensureAuthOverlay(){
 
 const overlay=ensureAuthOverlay();
 const isLoginPage=location.pathname.endsWith('/login.html')||location.pathname.endsWith('login.html');
-if(isLoginPage){overlay?.classList.add('open');overlay?.setAttribute('aria-hidden','false');document.body.classList.add('modal-open');}
-else{overlay?.classList.remove('open');overlay?.setAttribute('aria-hidden','true');}
+const hasOAuthCallback=location.search.includes('code=')||location.hash.includes('access_token=');
+if(isLoginPage){
+  overlay?.classList.add('open');overlay?.setAttribute('aria-hidden','false');document.body.classList.add('modal-open');
+  if(hasOAuthCallback)setAuthStatus('Finishing Google sign-in…');
+}else{overlay?.classList.remove('open');overlay?.setAttribute('aria-hidden','true');}
 const loginForm=document.getElementById('loginForm');
 const signupForm=document.getElementById('signupForm');
 const resetForm=document.getElementById('resetForm');
@@ -130,7 +133,28 @@ document.querySelectorAll('.auth-tabs button').forEach((button,index)=>{
 function setAuthStatus(m,err=false){if(authStatus){authStatus.textContent=m;authStatus.classList.toggle('error',err)}}
 function setAuthBusy(form,busy,label){const button=form?.querySelector('button[type="submit"]');if(!button)return;button.disabled=busy;if(busy){button.dataset.defaultLabel=button.innerHTML;button.innerHTML=`${label} <span>...</span>`;}else if(button.dataset.defaultLabel){button.innerHTML=button.dataset.defaultLabel;delete button.dataset.defaultLabel;}}
 async function withAuthTimeout(request){let timer;try{return await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Authentication is taking too long. Check your internet connection and try again.')),15000)})])}finally{clearTimeout(timer)}}
-async function continueWithGoogle(){if(!db){setAuthStatus(authUnavailableMessage,true);return}const buttons=[...document.querySelectorAll('[data-google-auth]')];buttons.forEach(button=>{button.disabled=true});setAuthStatus('Connecting to Google…');try{const redirectTarget=sanitizeReturnTarget(authReturnTo)||location.pathname.split('/').pop()||'index.html';const redirectTo=location.origin==='null'?undefined:`${location.origin}/${redirectTarget.replace(/^\/+/, '')}`;const options=redirectTo?{redirectTo}:{};const {error}=await withAuthTimeout(db.auth.signInWithOAuth({provider:'google',options}));if(error)setAuthStatus(friendlyError(error),true)}catch(error){setAuthStatus(friendlyError(error),true)}finally{buttons.forEach(button=>{button.disabled=false})}}
+async function continueWithGoogle(){
+  if(!db){setAuthStatus(authUnavailableMessage,true);return}
+  const buttons=[...document.querySelectorAll('[data-google-auth]')];
+  buttons.forEach(button=>{button.disabled=true});
+  setAuthStatus('Connecting to Google…');
+  try{
+    /* Return to login.html first so OAuth never builds a bad/404 route. */
+    const callbackUrl=(location.protocol==='http:'||location.protocol==='https:')
+      ? new URL('login.html',location.href).href
+      : undefined;
+    const options=callbackUrl?{redirectTo:callbackUrl}:{};
+    const {data,error}=await withAuthTimeout(
+      db.auth.signInWithOAuth({provider:'google',options})
+    );
+    if(error){setAuthStatus(friendlyError(error),true);return}
+    if(data?.url)setAuthStatus('Redirecting to Google…');
+  }catch(error){
+    setAuthStatus(friendlyError(error),true);
+  }finally{
+    buttons.forEach(button=>{button.disabled=false});
+  }
+}
 function showPasswordUpdate(){
   overlay?.classList.add('open'); overlay?.setAttribute('aria-hidden','false'); document.body.classList.add('modal-open');
   loginForm?.classList.add('hidden'); signupForm?.classList.add('hidden'); resetForm?.classList.add('hidden'); updatePasswordForm?.classList.remove('hidden');
@@ -227,8 +251,9 @@ loginForm?.addEventListener('submit',async e=>{
   const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
   setAuthBusy(loginForm,true,'Signing in');setAuthStatus('Signing you in…');
   try{
-    const {error}=await withAuthTimeout(db.auth.signInWithPassword({email,password}));
-    if(error){setAuthStatus(friendlyError(error),true);return}
+    const {data,error}=await withAuthTimeout(db.auth.signInWithPassword({email,password}));
+     if(error){setAuthStatus(friendlyError(error),true);return}
+     if(!data?.session){setAuthStatus('Login succeeded but no session was returned. Please try again.',true);return}
   }catch(error){setAuthStatus(friendlyError(error),true);return}
   finally{setAuthBusy(loginForm,false)}
   localStorage.setItem('starVisualsAuthPrompted','1'); closeAuth(true); toast('Signed in — your My Studio is connected.'); await loadStudio();

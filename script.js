@@ -6,6 +6,56 @@ document.getElementById('adminRefresh')?.addEventListener('click',loadAdminReque
 adminRequests?.addEventListener('change',async event=>{const select=event.target.closest('.admin-status-select');if(!select||!db)return;select.disabled=true;const {error}=await db.from('project_requests').update({status:select.value,updated_at:new Date().toISOString()}).eq('id',select.dataset.requestId);select.disabled=false;if(error){console.error('Project request status update failed:',error);setAdminStatus(friendlyError(error),true);return}setAdminStatus('Request status updated.')});adminRequests?.addEventListener('change',async event=>{const notes=event.target.closest('[data-admin-notes]');if(!notes||!db)return;const {error}=await db.from('project_requests').update({admin_notes:notes.value,updated_at:new Date().toISOString()}).eq('id',notes.dataset.adminNotes);if(error){console.error('Admin note update failed:',error);setAdminStatus(friendlyError(error),true);return}setAdminStatus('Admin message saved.')});
 /* STAR VISUALS — shared UI, email/password + Google authentication and Supabase data */
 document.body.classList.toggle('services-page-active',Boolean(document.querySelector('.pricing-card')));
+/* STAR VISUALS — mobile bottom navigation */
+function ensureBottomNavigation(){
+  if(document.getElementById('starBottomNav'))return;
+  const nav=document.createElement('nav');
+  nav.id='starBottomNav';
+  nav.className='star-bottom-nav';
+  nav.setAttribute('aria-label','Mobile primary navigation');
+  nav.innerHTML=`
+    <a class="star-bottom-nav__item" data-bottom-route="index.html" href="index.html">
+      <span class="star-bottom-nav__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3.5 10.8 12 3.8l8.5 7v8.7a1 1 0 0 1-1 1h-5.2v-6.1H9.7v6.1H4.5a1 1 0 0 1-1-1v-8.7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="star-bottom-nav__label">Home</span>
+    </a>
+    <a class="star-bottom-nav__item" data-bottom-route="services.html" href="services.html">
+      <span class="star-bottom-nav__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m12 3 1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m19.2 15 .8 2.5 2.5.8-2.5.8-.8 2.5-.8-2.5-2.5-.8 2.5-.8.8-2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span><span class="star-bottom-nav__label">Services</span>
+    </a>
+    <a class="star-bottom-nav__item" data-bottom-route="courses.html" href="courses.html">
+      <span class="star-bottom-nav__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m3.5 8 8.5-4 8.5 4-8.5 4-8.5-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6.2 10.1v5.2c2.1 2 9.5 2 11.6 0v-5.2M20.5 8v7.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="star-bottom-nav__label">Courses</span>
+    </a>
+    <a class="star-bottom-nav__item" data-bottom-account href="dashboard.html">
+      <span class="star-bottom-nav__icon" aria-hidden="true"><svg class="star-bottom-nav__dashboard-icon" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.7"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.7"/></svg></span><span class="star-bottom-nav__label">Dashboard</span>
+    </a>`;
+  document.body.appendChild(nav);
+  nav.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>nav.classList.add('is-navigating')));
+  syncBottomNavigation(false);
+}
+function syncBottomNavigation(isAdmin=false){
+  const nav=document.getElementById('starBottomNav');
+  if(!nav)return;
+  const current=(location.pathname.split('/').pop()||'index.html').toLowerCase();
+  nav.querySelectorAll('.star-bottom-nav__item').forEach(item=>item.classList.remove('is-active'));
+  nav.querySelectorAll('[data-bottom-route]').forEach(item=>{
+    const route=item.dataset.bottomRoute;
+    const active=(current===route)||(!current&&route==='index.html');
+    item.classList.toggle('is-active',active);
+  });
+  const account=nav.querySelector('[data-bottom-account]');
+  if(account){
+    const adminPage=current==='admin.html';
+    const adminMode=Boolean(isAdmin)||adminPage;
+    account.href=adminMode?'admin.html':'dashboard.html';
+    account.querySelector('.star-bottom-nav__label').textContent=adminMode?'Admin Panel':'Dashboard';
+    account.setAttribute('aria-label',adminMode?'Open Admin Panel':'Open Dashboard');
+    account.classList.toggle('is-active',adminMode?adminPage:current==='dashboard.html');
+    const icon=account.querySelector('svg');
+    if(icon)icon.outerHTML=adminMode
+      ? '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 20 6.8v5.1c0 4.2-2.9 7.3-8 8.6-5.1-1.3-8-4.4-8-8.6V6.8l8-3.3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9.2 12 1.9 1.9 3.8-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.7"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.7"/></svg>';
+  }
+  nav.classList.remove('is-navigating');
+}
+ensureBottomNavigation();
 const menu=document.querySelector('.menu'), mobileNav=document.querySelector('.mobile-nav');
 menu?.addEventListener('click',()=>{const open=mobileNav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));mobileNav.setAttribute('aria-hidden',String(!open));});
 mobileNav?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{mobileNav.classList.remove('open');menu?.setAttribute('aria-expanded','false');mobileNav?.setAttribute('aria-hidden','true');}));
@@ -105,6 +155,7 @@ function openAuth(mode='email-login',returnTo=''){
 function closeAuth(preserveReturn=false){overlay?.classList.remove('open');overlay?.setAttribute('aria-hidden','true');document.body.classList.remove('modal-open');resetAuthModal();if(!preserveReturn)authReturnTo=''}
 function updateHeaderAuth(session,isAdmin=false){
   const loggedIn=Boolean(session?.user);
+  syncBottomNavigation(isAdmin);
   document.querySelectorAll('.login-trigger, .mobile-nav a[href="login.html"]').forEach(link=>{link.hidden=loggedIn;});
   document.querySelectorAll('.desktop-nav a,.mobile-nav a').forEach(link=>{
     const href=link.getAttribute('href');

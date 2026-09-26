@@ -1090,9 +1090,15 @@ async function loadServiceAssetAssignments(){
   if(!db)return;
   const {data:services,error:serviceError}=await db.from('service_packages').select('id,name,published,sort_order').order('sort_order').order('name');
   if(serviceError){console.error('Service asset services load failed:',serviceError);return;}
+  const {data:assets,error:assetError}=await db.from('asset_library').select('*').order('created_at',{ascending:false});
   const {data:links,error:linkError}=await db.from('service_asset_links').select('service_id,asset_id').order('created_at');
-  if(linkError){console.error('Service asset links load failed:',linkError);serviceAssetAssignmentsCache={services:services||[],assets:assetLibraryState.assets||[],links:[]};}
-  else serviceAssetAssignmentsCache={services:services||[],assets:assetLibraryState.assets||[],links:links||[]};
+  if(assetError)console.error('Service asset assignment asset load failed:',assetError);
+  if(linkError)console.error('Service asset links load failed:',linkError);
+  serviceAssetAssignmentsCache={
+    services:services||[],
+    assets:assetError?(assetLibraryState.assets||[]):dedupeAssets(assets||[]),
+    links:linkError?[]:(links||[])
+  };
   renderServiceAssetAdminOptions();
   renderServiceAssetLibrary();
 }

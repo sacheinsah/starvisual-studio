@@ -763,6 +763,12 @@ async function loadAssetCatalog({append=false}={}){
     assetLibraryState.hasMore=false;
   }else{
     const incoming=dedupeAssets(data||[]);
+    const collectionMap=new Map();
+    assetLibraryState.collections.forEach(c=>(c.asset_ids||[]).forEach(id=>{
+      if(!collectionMap.has(String(id)))collectionMap.set(String(id),[]);
+      collectionMap.get(String(id)).push(String(c.id));
+    }));
+    incoming.forEach(a=>a.collection_ids=collectionMap.get(String(a.id))||[]);
     assetLibraryState.assets=append?dedupeAssets([...assetLibraryState.assets,...incoming]):incoming;
     assetLibraryState.hasMore=(count==null?incoming.length===ASSET_PAGE_SIZE:assetLibraryState.assets.length<count);
   }
@@ -940,7 +946,7 @@ function wireAssetLibraryUI(){
     document.getElementById(id)?.addEventListener('change',e=>{
       const key=id.replace('asset','').replace('Filter','').toLowerCase();
       const map={category:'category',access:'access',format:'format',software:'software',sort:'sort'};
-      assetLibraryState[map[key]]=e.target.value;assetLibraryState.page=1;renderAssetLibrary();
+      assetLibraryState[map[key]]=e.target.value;assetLibraryState.page=1;assetLibraryState.assets=[];loadAssetCatalog();
     });
   });
   document.getElementById('assetResetFilters')?.addEventListener('click',resetAssetLibraryFilters);

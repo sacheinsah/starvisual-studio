@@ -1329,7 +1329,7 @@ async function init(){
   if(adminRequests)await loadAdminRequests();
   if(document.getElementById('adminAssetList')){await loadAssetCategories();await loadAssetCollections();await loadAdminAssets();await loadAdminAssetStats();}
   if(document.getElementById('adminServiceList'))await loadAdminStudio();
-  if(db)db.auth.onAuthStateChange(async(event)=>{
+  if(db)db.auth.onAuthStateChange(async(event,session)=>{  cachedAuthSession=session||null;
     if(event==='PASSWORD_RECOVERY')showPasswordUpdate();
     if(event==='SIGNED_IN'&&isLoginPage)await navigateAfterAuth();
     await loadStudio();

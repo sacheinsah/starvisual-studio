@@ -688,10 +688,8 @@ function renderAdminAssetCategorySelect(){
   if(current&&ASSET_LIBRARY_CATEGORIES.includes(current))select.value=current;
 }
 async function loadAssetCategories(){
-  if(!db){setAssetCategories(DEFAULT_ASSET_CATEGORIES);renderAdminAssetCategorySelect();return;}
-  const {data,error}=await db.from('asset_categories').select('*').eq('published',true).order('sort_order').order('created_at');
-  if(error||!data?.length){setAssetCategories(DEFAULT_ASSET_CATEGORIES);renderAdminAssetCategorySelect();return;}
-  setAssetCategories(data);renderAdminAssetCategorySelect();
+  setAssetCategories(DEFAULT_ASSET_CATEGORIES);
+  renderAdminAssetCategorySelect();
 }
 async function loadAssetCollections(includeAdmin=false){
   if(!db)return [];

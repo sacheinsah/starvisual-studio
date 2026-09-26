@@ -1242,50 +1242,6 @@ async function loadAdminAssetStats(){
   const values=[total,free,premium,downloads];
   host.querySelectorAll('div strong').forEach((el,i)=>el.textContent=Number(values[i]||0).toLocaleString('en-IN'));
 }
-async function loadAdminAssetCollectionsList(){
-  const list=document.getElementById('adminAssetCollectionList');if(!list||!db)return;
-  const {data,error}=await db.from('asset_collections').select('*').order('sort_order').order('created_at');
-  if(error){list.innerHTML=`<div class="admin-empty">${escapeHtml(friendlyError(error))}</div>`;return;}
-  list.innerHTML=(data||[]).map(c=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${c.published?'Published':'Draft'}</span><h3>${escapeHtml(c.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-collection-manage="${escapeHtml(c.id)}">Manage Assets</button><button class="outline-btn" type="button" data-collection-edit="${escapeHtml(c.id)}">Edit</button><button class="outline-btn" type="button" data-collection-delete="${escapeHtml(c.id)}">Delete</button></div></div><div class="admin-request-grid"><div><span>ORDER</span><strong>${Number(c.sort_order||0)}</strong></div><div><span>DESCRIPTION</span><strong>${escapeHtml(c.description||'—')}</strong></div></div></article>`).join('')||'<div class="admin-empty">No collections yet.</div>';
-}
-async function loadAdminAssetCategoriesList(){
-  const list=document.getElementById('adminAssetCategoryList');if(!list||!db)return;
-  const {data,error}=await db.from('asset_categories').select('*').order('sort_order').order('created_at');
-  if(error){list.innerHTML=`<div class="admin-empty">${escapeHtml(friendlyError(error))}</div>`;return;}
-  const {data:assetRows}=await db.from('asset_library').select('category');
-  const assets=assetRows||[];
-  list.innerHTML=(data||[]).map(c=>{
-    const count=assets.filter(a=>a.category===c.name).length;
-    return `<article class="asset-category-admin-card"><div class="asset-category-card-thumb" style="background-image:url('${escapeHtml(c.thumbnail_url||'assets/asset-pack/asset-library-cover.svg')}')"></div><div><span class="eyebrow">${count} ASSETS · ${c.published?'LIVE':'DRAFT'}</span><h4>${escapeHtml(c.name)}</h4><p>${escapeHtml(c.description||'')}</p></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-category-edit="${escapeHtml(c.id)}">Edit</button><button class="outline-btn" type="button" data-category-delete="${escapeHtml(c.id)}">Delete</button></div></article>`;
-  }).join('')||'<div class="admin-empty">No categories yet.</div>';
-}
-
-async function openAdminCollectionManager(collectionId){
-  if(!db)return;
-  const {data:collection,error}=await db.from('asset_collections').select('*').eq('id',collectionId).maybeSingle();
-  if(error||!collection){setAdminFeatureStatus('assetCollectionStatus',friendlyError(error||'Collection not found.'),true);return;}
-  const {data:items}=await db.from('asset_collection_items').select('asset_id,sort_order').eq('collection_id',collectionId).order('sort_order');
-  const selected=new Map((items||[]).map(i=>[String(i.asset_id),Number(i.sort_order||0)]));
-  let modal=document.getElementById('adminCollectionManager');
-  if(!modal){
-    modal=document.createElement('div');modal.id='adminCollectionManager';modal.className='asset-detail-modal';
-    document.body.appendChild(modal);
-  }
-  modal.innerHTML=`<div class="asset-detail-backdrop" data-admin-collection-close></div><section class="asset-detail-panel admin-collection-manager-v2" role="dialog" aria-modal="true"><button class="asset-detail-close" type="button" data-admin-collection-close>×</button><div class="asset-detail-copy"><p class="eyebrow">COLLECTION</p><h2>${escapeHtml(collection.name)}</h2><p class="asset-detail-description">Select assets and set their order. Saving replaces this collection's asset membership only; the assets themselves are not deleted.</p><div class="collection-manager-list">${assetLibraryState.assets.map((asset,i)=>`<label class="collection-manager-item"><input type="checkbox" data-collection-asset="${escapeHtml(asset.id)}" ${selected.has(String(asset.id))?'checked':''}><span><strong>${escapeHtml(asset.name)}</strong><small>${escapeHtml(asset.category)}</small></span><input class="collection-order-input" type="number" min="0" value="${selected.get(String(asset.id))??i}" data-collection-order="${escapeHtml(asset.id)}" aria-label="Order for ${escapeHtml(asset.name)}"></label>`).join('')||'<div class="asset-empty-v2">No assets available.</div>'}</div><div class="asset-detail-actions"><button class="outline-btn" type="button" data-admin-collection-close>Cancel</button><button class="btn" type="button" id="saveCollectionAssets">Save collection assets</button></div><p class="asset-detail-note" id="collectionManagerStatus"></p></div></section>`;
-  modal.classList.add('open');document.body.classList.add('modal-open');
-  modal.querySelectorAll('[data-admin-collection-close]').forEach(b=>b.addEventListener('click',()=>{modal.classList.remove('open');document.body.classList.remove('modal-open');}));
-  modal.querySelector('#saveCollectionAssets')?.addEventListener('click',async()=>{
-    const rows=[...modal.querySelectorAll('[data-collection-asset]:checked')].map(input=>({collection_id:collectionId,asset_id:input.dataset.collectionAsset,sort_order:Number(modal.querySelector(`[data-collection-order="${CSS.escape(input.dataset.collectionAsset)}"]`)?.value||0)}));
-    const status=modal.querySelector('#collectionManagerStatus');
-    status.textContent='Saving…';
-    const {error:delError}=await db.from('asset_collection_items').delete().eq('collection_id',collectionId);
-    if(delError){status.textContent=friendlyError(delError);return;}
-    if(rows.length){const {error:insertError}=await db.from('asset_collection_items').insert(rows);if(insertError){status.textContent=friendlyError(insertError);return;}}
-    status.textContent='Collection updated.';
-    await loadAssetCollections();renderAssetLibrary();await loadAdminAssetCollectionsList();
-    setTimeout(()=>{modal.classList.remove('open');document.body.classList.remove('modal-open');},350);
-  });
-}
 
 function setupAdminStudio(){
   if(window.__starVisualsAdminStudioSetup)return;

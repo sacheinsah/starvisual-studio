@@ -1236,11 +1236,10 @@ async function saveLessonForm(event){
 async function loadAdminAssetStats(){
   const host=document.getElementById('assetAdminStats');if(!host||!db)return;
   const {data:assets}=await db.from('asset_library').select('id,access_type,downloads_count');
-  const {data:collections}=await db.from('asset_collections').select('id');
   const rows=assets||[];
   const total=rows.length,free=rows.filter(a=>a.access_type==='free').length,premium=rows.filter(a=>a.access_type==='premium').length;
   const downloads=rows.reduce((sum,a)=>sum+Number(a.downloads_count||0),0);
-  const values=[total,free,premium,(collections||[]).length,downloads];
+  const values=[total,free,premium,downloads];
   host.querySelectorAll('div strong').forEach((el,i)=>el.textContent=Number(values[i]||0).toLocaleString('en-IN'));
 }
 async function loadAdminAssetCollectionsList(){
@@ -1287,54 +1286,7 @@ async function openAdminCollectionManager(collectionId){
     setTimeout(()=>{modal.classList.remove('open');document.body.classList.remove('modal-open');},350);
   });
 }
-function setupAdminAssetTaxonomy(){
-  if(window.__starVisualsAdminAssetTaxonomy)return;
-  const collectionForm=document.getElementById('assetCollectionForm'),categoryForm=document.getElementById('assetCategoryForm');
-  if(!collectionForm&&!categoryForm)return;
-  window.__starVisualsAdminAssetTaxonomy=true;
-  loadAdminAssetCollectionsList();loadAdminAssetCategoriesList();
-  collectionForm?.addEventListener('submit',async e=>{
-    e.preventDefault();const id=document.getElementById('assetCollectionEditId').value||'';
-    const payload={name:document.getElementById('assetCollectionName').value.trim(),description:document.getElementById('assetCollectionDescription').value.trim(),thumbnail_url:document.getElementById('assetCollectionThumbnail').value.trim()||'assets/asset-pack/asset-library-cover.svg',sort_order:Number(document.getElementById('assetCollectionSort').value||0),published:document.getElementById('assetCollectionPublished').value==='true',updated_at:new Date().toISOString()};
-    if(!payload.name){setAdminFeatureStatus('assetCollectionStatus','Collection name is required.',true);return;}
-    const result=id?await db.from('asset_collections').update(payload).eq('id',id):await db.from('asset_collections').insert(payload);
-    if(result.error){setAdminFeatureStatus('assetCollectionStatus',friendlyError(result.error),true);return;}
-    collectionForm.reset();document.getElementById('assetCollectionEditId').value='';
-    setAdminFeatureStatus('assetCollectionStatus','Collection saved.');await loadAdminAssetCollectionsList();await loadAdminAssetCollections();loadAdminAssetStats();
-  });
-  document.getElementById('assetCollectionReset')?.addEventListener('click',()=>{collectionForm.reset();document.getElementById('assetCollectionEditId').value='';});
-  document.getElementById('adminAssetCollectionList')?.addEventListener('click',async e=>{
-    const manage=e.target.closest('[data-collection-manage]');
-    const edit=e.target.closest('[data-collection-edit]'),del=e.target.closest('[data-collection-delete]');
-    if(manage){await openAdminCollectionManager(manage.dataset.collectionManage);return;}
-    if(edit){const {data}=await db.from('asset_collections').select('*').eq('id',edit.dataset.collectionEdit).maybeSingle();if(data){document.getElementById('assetCollectionEditId').value=data.id;document.getElementById('assetCollectionName').value=data.name||'';document.getElementById('assetCollectionDescription').value=data.description||'';document.getElementById('assetCollectionThumbnail').value=data.thumbnail_url||'';document.getElementById('assetCollectionSort').value=Number(data.sort_order||0);document.getElementById('assetCollectionPublished').value=String(data.published);}}
-    if(del){if(!confirm('Delete this collection? Assets will remain in the library.'))return;const {error}=await db.from('asset_collections').delete().eq('id',del.dataset.collectionDelete);if(error){setAdminFeatureStatus('assetCollectionStatus',friendlyError(error),true);return;}await loadAdminAssetCollectionsList();await loadAdminAssetCollections();loadAdminAssetStats();}
-  });
-  categoryForm?.addEventListener('submit',async e=>{
-    e.preventDefault();const id=document.getElementById('assetCategoryEditId').value||'';
-    const payload={name:document.getElementById('assetCategoryName').value.trim(),description:document.getElementById('assetCategoryDescription').value.trim(),thumbnail_url:document.getElementById('assetCategoryThumbnail').value.trim()||'assets/asset-pack/asset-library-cover.svg',sort_order:Number(document.getElementById('assetCategorySort').value||0),published:document.getElementById('assetCategoryPublished').value==='true',updated_at:new Date().toISOString()};
-    if(!payload.name){setAdminFeatureStatus('assetCategoryStatus','Category name is required.',true);return;}
-    const result=id?await db.from('asset_categories').update(payload).eq('id',id):await db.from('asset_categories').insert(payload);
-    if(result.error){setAdminFeatureStatus('assetCategoryStatus',friendlyError(result.error),true);return;}
-    categoryForm.reset();document.getElementById('assetCategoryEditId').value='';
-    setAdminFeatureStatus('assetCategoryStatus','Category saved.');await loadAssetCategories();await loadAssetCatalog();await loadAdminAssetCategoriesList();loadAdminAssetStats();
-  });
-  document.getElementById('assetCategoryReset')?.addEventListener('click',()=>{categoryForm.reset();document.getElementById('assetCategoryEditId').value='';});
-  document.getElementById('adminAssetCategoryList')?.addEventListener('click',async e=>{
-    const edit=e.target.closest('[data-category-edit]'),del=e.target.closest('[data-category-delete]');
-    if(edit){const {data}=await db.from('asset_categories').select('*').eq('id',edit.dataset.categoryEdit).maybeSingle();if(data){document.getElementById('assetCategoryEditId').value=data.id;document.getElementById('assetCategoryName').value=data.name||'';document.getElementById('assetCategoryDescription').value=data.description||'';document.getElementById('assetCategoryThumbnail').value=data.thumbnail_url||'';document.getElementById('assetCategorySort').value=Number(data.sort_order||0);document.getElementById('assetCategoryPublished').value=String(data.published);}}
-    if(del){
-      const {data:categoryRow}=await db.from('asset_categories').select('name').eq('id',del.dataset.categoryDelete).maybeSingle();
-      const {data:categoryAssets}=await db.from('asset_library').select('id').eq('category',categoryRow?.name||'');
-      const count=(categoryAssets||[]).length;
-      if(count){setAdminFeatureStatus('assetCategoryStatus',`Move ${count} asset${count===1?'':'s'} to another category before deleting this category.`,true);return;}
-      if(!confirm('Delete this category?'))return;
-      const {error}=await db.from('asset_categories').delete().eq('id',del.dataset.categoryDelete);
-      if(error){setAdminFeatureStatus('assetCategoryStatus',friendlyError(error),true);return;}
-      await loadAssetCategories();await loadAssetCatalog();await loadAdminAssetCategoriesList();loadAdminAssetStats();
-    }
-  });
-}
+
 function setupAdminStudio(){
   if(window.__starVisualsAdminStudioSetup)return;
   if(!document.getElementById('adminServiceList'))return;
@@ -1365,7 +1317,6 @@ function setupAdminStudio(){
   document.getElementById('lessonForm')?.addEventListener('submit',saveLessonForm);
   document.getElementById('lessonReset')?.addEventListener('click',()=>{document.getElementById('lessonForm')?.reset();document.getElementById('adminLessonList').innerHTML='<div class="admin-empty">Select a course to view lessons.</div>';});
   setupAdminAssetLibrary();
-  setupAdminAssetTaxonomy();
 }
 
 async function loadAdminStudio(){

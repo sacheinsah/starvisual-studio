@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /dashboard.html
+Disallow: /login.html
+Disallow: /lesson.html
+Disallow: /project.html?*
+Sitemap: https://starvisual.in/sitemap.xml

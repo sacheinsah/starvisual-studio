@@ -1,7 +1,7 @@
 const adminStatus=document.getElementById('adminStatus');
 const adminRequests=document.getElementById('adminRequests');
 function setAdminStatus(message,error=false){if(adminStatus){adminStatus.textContent=message;adminStatus.classList.toggle('error',error)}}
-function adminRequestCard(request,profile){const contact=request.email||profile?.email||'No email provided';const phone=request.phone||'No phone provided';const service=request.service_type||request.package_name||'Editing request';const brief=request.requirements||'No brief provided';return `<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(request.project_name)}</span><h3>${escapeHtml(service)}</h3></div><select class="admin-status-select" data-request-id="${request.id}" aria-label="Update request status"><option value="NEW" ${request.status==='NEW'?'selected':''}>New</option><option value="REVIEWING" ${request.status==='REVIEWING'?'selected':''}>Reviewing</option><option value="QUOTED" ${request.status==='QUOTED'?'selected':''}>Quoted</option><option value="APPROVED" ${request.status==='APPROVED'?'selected':''}>Approved</option><option value="IN PROGRESS" ${request.status==='IN PROGRESS'?'selected':''}>In progress</option><option value="REVISION" ${request.status==='REVISION'?'selected':''}>Revision</option><option value="COMPLETED" ${request.status==='COMPLETED'?'selected':''}>Completed</option><option value="CANCELLED" ${request.status==='CANCELLED'?'selected':''}>Cancelled</option></select></div><div class="admin-request-grid"><div><span>CLIENT</span><strong>${escapeHtml(request.full_name||profile?.full_name||'Unknown')}</strong><small>${escapeHtml(contact)}<br>${escapeHtml(phone)}</small></div><div><span>SERVICE / PLATFORM</span><strong>${escapeHtml(service)}</strong><small>${escapeHtml(request.platform||'Platform not specified')} · ${escapeHtml(request.video_duration||'Duration not specified')}</small></div><div><span>BUDGET / DEADLINE</span><strong>${escapeHtml(request.budget||'Not specified')}</strong><small>${escapeHtml(request.deadline||'No deadline')} · ${request.created_at?new Date(request.created_at).toLocaleDateString('en-IN'):''}</small></div></div><div class="admin-brief"><span>PROJECT BRIEF</span><p>${escapeHtml(brief)}</p>${request.footage_link?`<a href="${escapeHtml(request.footage_link)}" target="_blank" rel="noopener">Open footage link ↗</a>`:''}${request.reference_link?`<a href="${escapeHtml(request.reference_link)}" target="_blank" rel="noopener">Open reference link ↗</a>`:''}</div><label class="admin-brief"><span>ADMIN MESSAGE</span><textarea data-admin-notes="${request.id}" rows="3" placeholder="Message visible in My Studio">${escapeHtml(request.admin_notes||'')}</textarea></label></article>`}async function loadAdminRequests(){if(!adminRequests||!db)return;setAdminStatus('Checking administrator access…');adminRequests.innerHTML='<div class="admin-empty">Loading requests…</div>';const {data:{session}}=await db.auth.getSession();if(!session?.user){location.href='login.html?returnTo=admin.html';return}const {data:isAdmin,error:adminError}=await db.rpc('project_request_admin_check');if(adminError||!isAdmin){location.href='dashboard.html';return}const {data:requests,error}=await db.from('project_requests').select('id,user_id,full_name,email,phone,project_name,service_type,video_duration,platform,editing_style,requirements,deadline,budget,footage_link,reference_link,additional_notes,status,admin_notes,created_at,updated_at,package_name,amount_inr,notes').order('created_at',{ascending:false});if(error){console.error('Project request load failed:',error);setAdminStatus(friendlyError(error),true);adminRequests.innerHTML='<div class="admin-empty">Requests could not be loaded.</div>';return}const ids=[...new Set((requests||[]).map(request=>request.user_id))];const {data:profiles}=ids.length?await db.from('profiles').select('id,full_name,email').in('id',ids):{data:[]};const profileMap=new Map((profiles||[]).map(profile=>[profile.id,profile]));adminRequests.innerHTML=requests?.length?requests.map(request=>adminRequestCard(request,profileMap.get(request.user_id))).join(''):'<div class="admin-empty">No editing requests yet.</div>';setAdminStatus(`${requests?.length||0} request${requests?.length===1?'':'s'} found.`)}
+function adminRequestCard(request,profile){const contact=request.email||profile?.email||'No email provided';const phone=request.phone||'No phone provided';const service=request.service_type||request.package_name||'Editing request';const brief=request.requirements||'No brief provided';return `<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(request.project_name)}</span><h3>${escapeHtml(service)}</h3></div><select class="admin-status-select" data-request-id="${request.id}" aria-label="Update request status"><option value="NEW" ${request.status==='NEW'?'selected':''}>New</option><option value="REVIEWING" ${request.status==='REVIEWING'?'selected':''}>Reviewing</option><option value="QUOTED" ${request.status==='QUOTED'?'selected':''}>Quoted</option><option value="APPROVED" ${request.status==='APPROVED'?'selected':''}>Approved</option><option value="IN PROGRESS" ${request.status==='IN PROGRESS'?'selected':''}>In progress</option><option value="REVISION" ${request.status==='REVISION'?'selected':''}>Revision</option><option value="COMPLETED" ${request.status==='COMPLETED'?'selected':''}>Completed</option><option value="CANCELLED" ${request.status==='CANCELLED'?'selected':''}>Cancelled</option></select></div><div class="admin-request-grid"><div><span>CLIENT</span><strong>${escapeHtml(request.full_name||profile?.full_name||'Unknown')}</strong><small>${escapeHtml(contact)}<br>${escapeHtml(phone)}</small></div><div><span>SERVICE / PLATFORM</span><strong>${escapeHtml(service)}</strong><small>${escapeHtml(request.platform||'Platform not specified')} · ${escapeHtml(request.video_duration||'Duration not specified')}</small></div><div><span>BUDGET / DEADLINE</span><strong>${escapeHtml(request.budget||'Not specified')}</strong><small>${escapeHtml(request.deadline||'No deadline')} · ${request.created_at?new Date(request.created_at).toLocaleDateString('en-IN'):''}</small></div></div><div class="admin-brief"><span>PROJECT BRIEF</span><p>${escapeHtml(brief)}</p>${request.footage_link?`<a href="${escapeHtml(request.footage_link)}" target="_blank" rel="noopener">Open footage link ↗</a>`:''}${request.reference_link?`<a href="${escapeHtml(request.reference_link)}" target="_blank" rel="noopener">Open reference link ↗</a>`:''}</div><label class="admin-brief"><span>ADMIN MESSAGE</span><textarea data-admin-notes="${request.id}" rows="3" placeholder="Message visible in My Studio">${escapeHtml(request.admin_notes||'')}</textarea></label></article>`}async function loadAdminRequests(){if(!adminRequests||!db)return;setAdminStatus('Checking administrator access…');adminRequests.innerHTML='<div class="admin-empty">Loading requests…</div>';const session=await getCurrentSession();if(!session?.user){location.href='login.html?returnTo=admin.html';return}const {data:isAdmin,error:adminError}=await db.rpc('project_request_admin_check');if(adminError||!isAdmin){location.href='dashboard.html';return}const {data:requests,error}=await db.from('project_requests').select('id,user_id,full_name,email,phone,project_name,service_type,video_duration,platform,editing_style,requirements,deadline,budget,footage_link,reference_link,additional_notes,status,admin_notes,created_at,updated_at,package_name,amount_inr,notes').order('created_at',{ascending:false});if(error){console.error('Project request load failed:',error);setAdminStatus(friendlyError(error),true);adminRequests.innerHTML='<div class="admin-empty">Requests could not be loaded.</div>';return}const ids=[...new Set((requests||[]).map(request=>request.user_id))];const {data:profiles}=ids.length?await db.from('profiles').select('id,full_name,email').in('id',ids):{data:[]};const profileMap=new Map((profiles||[]).map(profile=>[profile.id,profile]));adminRequests.innerHTML=requests?.length?requests.map(request=>adminRequestCard(request,profileMap.get(request.user_id))).join(''):'<div class="admin-empty">No editing requests yet.</div>';setAdminStatus(`${requests?.length||0} request${requests?.length===1?'':'s'} found.`)}
 document.getElementById('adminRefresh')?.addEventListener('click',loadAdminRequests);
 adminRequests?.addEventListener('change',async event=>{const select=event.target.closest('.admin-status-select');if(!select||!db)return;select.disabled=true;const {error}=await db.from('project_requests').update({status:select.value,updated_at:new Date().toISOString()}).eq('id',select.dataset.requestId);select.disabled=false;if(error){console.error('Project request status update failed:',error);setAdminStatus(friendlyError(error),true);return}setAdminStatus('Request status updated.')});adminRequests?.addEventListener('change',async event=>{const notes=event.target.closest('[data-admin-notes]');if(!notes||!db)return;const {error}=await db.from('project_requests').update({admin_notes:notes.value,updated_at:new Date().toISOString()}).eq('id',notes.dataset.adminNotes);if(error){console.error('Admin note update failed:',error);setAdminStatus(friendlyError(error),true);return}setAdminStatus('Admin message saved.')});
 /* STAR VISUALS — shared UI, email/password + Google authentication and Supabase data */
@@ -85,6 +85,20 @@ const validSupabaseUrl=typeof cfg.url==='string'&&/^https:\/\/[^/]+\.supabase\.c
 const supabaseReady=Boolean(window.supabase?.createClient&&validSupabaseUrl&&cfg.publishableKey&&!cfg.publishableKey.includes('YOUR_SUPABASE'));
 const db=supabaseReady?window.supabase.createClient(cfg.url,cfg.publishableKey):null;
 window.db=db;
+let cachedAuthSession=null;
+let authSessionPromise=null;
+async function getCurrentSession(){
+  if(!db)return null;
+  if(cachedAuthSession)return cachedAuthSession;
+  if(!authSessionPromise){
+    authSessionPromise=db.auth.getSession().then(({data,error})=>{
+      if(error)console.warn('Supabase session lookup failed:',error);
+      cachedAuthSession=data?.session||null;
+      return cachedAuthSession;
+    }).finally(()=>{authSessionPromise=null});
+  }
+  return authSessionPromise;
+}
 const authUnavailableMessage='Supabase is not connected yet. Add your real project URL in supabase-config.js.';
 
 function ensureAuthOverlay(){
@@ -215,7 +229,7 @@ async function navigateAfterAuth(defaultTarget='dashboard.html'){
   if(!isLoginPage)return;
   let destination=defaultTarget;
   if(db){
-    const {data:{session}}=await db.auth.getSession();
+    const session=await getCurrentSession();
     if(session?.user){
       const {data:profile}=await db.from('profiles').select('role,is_admin').eq('id',session.user.id).maybeSingle();
       if(profile?.role==='admin'||profile?.is_admin===true) destination='admin.html';
@@ -407,7 +421,7 @@ document.getElementById('logoutBtn')?.addEventListener('click',handleUserLogout)
 
 async function loadStudio(){
   if(!db)return;
-  const {data:{session}}=await db.auth.getSession();
+  const session=await getCurrentSession();
   const locked=document.getElementById('accountLocked'),dash=document.getElementById('accountDashboard');
   if(!session?.user){updateHeaderAuth(null,false);locked?.classList.remove('hidden');dash?.classList.add('hidden');return}
   const u=session.user;
@@ -459,7 +473,7 @@ projectForm?.addEventListener('submit',async e=>{
   e.preventDefault();
   if(!db){setProjectStatus('Your request could not be submitted. Please try again.',true);console.error('Project request submission unavailable: Supabase configuration is missing or invalid.');return}
   setProjectStatus('Checking your account…');
-  const {data:{session}}=await db.auth.getSession();
+  const session=await getCurrentSession();
   if(!session?.user){
     openAuth('email-signup','project.html');
     return;
@@ -709,12 +723,12 @@ async function loadAssetCollections(includeAdmin=false){
 async function loadAssetFavorites(){
   assetLibraryState.favorites=new Set();
   if(!db)return;
-  const {data:{session}}=await db.auth.getSession();
+  const session=await getCurrentSession();
   if(!session?.user)return;
   const {data}=await db.from('asset_favorites').select('asset_id').eq('user_id',session.user.id);
   (data||[]).forEach(row=>assetLibraryState.favorites.add(String(row.asset_id)));
 }
-async function loadAssetCatalog(){
+async function loadAssetCatalog({append=false}={}){
   const grid=document.getElementById('assetLibraryGrid');
   const sections=document.getElementById('assetLibrarySections')||document.getElementById('servicesAssetSections');
   const categoryCards=document.getElementById('assetCategoryCards');
@@ -725,20 +739,33 @@ async function loadAssetCatalog(){
   const requestedCategory=new URLSearchParams(location.search).get('category')||'';
   const matchedCategory=ASSET_LIBRARY_CATEGORIES.find(c=>c.toLowerCase()===requestedCategory.trim().toLowerCase());
   if(matchedCategory)assetLibraryState.category=matchedCategory;
-  await loadAssetCollections();
-  await loadAssetFavorites();
-  if(db){
-    const {data,error}=await db.from('asset_library').select('*').eq('published',true).order('created_at',{ascending:false});
-    if(error){console.error('Public Asset Library load failed:',error);assetLibraryState.assets=[];}
-    else assetLibraryState.assets=dedupeAssets(data||[]);
-  }else assetLibraryState.assets=[];
-  // Attach collection IDs without creating duplicate asset records.
-  const collectionMap=new Map();
-  assetLibraryState.collections.forEach(c=>(c.asset_ids||[]).forEach(id=>{
-    if(!collectionMap.has(id))collectionMap.set(id,[]);
-    collectionMap.get(id).push(String(c.id));
-  }));
-  assetLibraryState.assets.forEach(a=>a.collection_ids=collectionMap.get(String(a.id))||[]);
+  if(!append)await Promise.all([loadAssetCollections(),loadAssetFavorites()]);
+  if(!db){assetLibraryState.assets=[];assetLibraryState.hasMore=false;assetLibraryState.loading=false;renderAssetLibrary();return;}
+  const fields='id,name,description,category,subcategory,tags,thumbnail_url,preview_url,file_url,external_download_url,file_type,file_size,software,software_compatibility,access_type,price,published,downloads_count,created_at,featured,trending';
+  let query=db.from('asset_library').select(fields,{count:'exact'}).eq('published',true);
+  if(assetLibraryState.category)query=query.eq('category',assetLibraryState.category);
+  if(assetLibraryState.access)query=query.eq('access_type',assetLibraryState.access);
+  if(assetLibraryState.format)query=query.ilike('file_type',assetLibraryState.format);
+  if(assetLibraryState.software)query=query.ilike('software',`%${assetLibraryState.software.replace(/[%_]/g,'')}%`);
+  if(assetLibraryState.search){
+    const q=assetLibraryState.search.replace(/[%_,]/g,' ').trim();
+    if(q)query=query.or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%,subcategory.ilike.%${q}%,file_type.ilike.%${q}%,software.ilike.%${q}%`);
+  }
+  if(assetLibraryState.featured)query=query.eq('featured',true);
+  if(assetLibraryState.trending)query=query.eq('trending',true);
+  const orderColumn=assetLibraryState.sort==='popular'?'downloads_count':assetLibraryState.sort==='az'?'name':'created_at';
+  query=query.order(orderColumn,{ascending:assetLibraryState.sort==='az'});
+  const from=append?assetLibraryState.assets.length:0;
+  const {data,error,count}=await query.range(from,from+ASSET_PAGE_SIZE-1);
+  if(error){
+    console.error('Public Asset Library load failed:',error);
+    if(!append)assetLibraryState.assets=[];
+    assetLibraryState.hasMore=false;
+  }else{
+    const incoming=dedupeAssets(data||[]);
+    assetLibraryState.assets=append?dedupeAssets([...assetLibraryState.assets,...incoming]):incoming;
+    assetLibraryState.hasMore=(count==null?incoming.length===ASSET_PAGE_SIZE:assetLibraryState.assets.length<count);
+  }
   window.STAR_VISUALS_ASSET_CATALOG=assetLibraryState.assets;
   assetLibraryState.loading=false;
   updateAssetFilterOptions();
@@ -791,17 +818,17 @@ function renderAssetLibrary(){
   if(sortSelect)sortSelect.value=assetLibraryState.sort||'newest';
   renderAssetCategoryCards();
   document.querySelectorAll('[data-asset-category-filter]').forEach(btn=>btn.classList.toggle('active',btn.dataset.assetCategoryFilter===assetLibraryState.category));
-  const visible=sortAssets(assetLibraryState.assets.filter(assetMatchesFilters));
+  const visible=assetLibraryState.assets.filter(assetMatchesFilters);
   const grid=document.getElementById('assetLibraryGrid');
   const resultCount=document.getElementById('assetResultCount');
   if(resultCount)resultCount.textContent=`${visible.length} asset${visible.length===1?'':'s'} found`;
   if(grid){
     const end=assetLibraryState.page*ASSET_PAGE_SIZE;
-    const pageItems=categoryMode?visible:visible.slice(0,end);
+    const pageItems=visible.slice(0,end);
     grid.innerHTML=pageItems.length?assetCardsMarkup(pageItems):'<div class="asset-empty-v2"><strong>No assets found</strong><span>Try another search, category or filter.</span></div>';
     hydrateAssetMedia(grid);
     const more=document.getElementById('assetLoadMore');
-    if(more){more.hidden=categoryMode||end>=visible.length;more.textContent=categoryMode?'':'Load more assets';}
+    if(more){more.hidden=!assetLibraryState.hasMore;more.textContent='Load more assets';}
   }
   const featured=document.getElementById('assetFeaturedGrid');
   if(featured){
@@ -858,7 +885,7 @@ function openAssetDetail(assetId){
 function closeAssetDetail(){document.getElementById('assetDetailModal')?.classList.remove('open');document.body.classList.remove('modal-open');}
 async function toggleAssetFavorite(assetId){
   if(!db){openAuth('email-login','assets.html');return;}
-  const {data:{session}}=await db.auth.getSession();
+  const session=await getCurrentSession();
   if(!session?.user){openAuth('email-login','assets.html');return;}
   const key=String(assetId),isSaved=assetLibraryState.favorites.has(key);
   if(isSaved){
@@ -879,7 +906,7 @@ async function handleAssetDownload(asset){
   if(!item.published){toast('This asset is not published.');return;}
   if(item.access_type==='premium'){
     if(!db){openAuth('email-login','assets.html');return;}
-    const {data:{session}}=await db.auth.getSession();
+    const session=await getCurrentSession();
     if(!session?.user){openAuth('email-login','assets.html');toast('Log in to access premium assets.');return;}
     const {data:access}=await db.from('user_asset_access').select('id').eq('user_id',session.user.id).eq('asset_id',item.id).in('status',['available','purchased','downloaded']).maybeSingle();
     if(!access){toast('This premium asset is not unlocked for your account.');return;}
@@ -908,7 +935,7 @@ function wireAssetLibraryUI(){
   if(!document.getElementById('assetLibraryGrid')&&!document.getElementById('servicesAssetSections'))return;
   window.__starVisualsAssetV2Wired=true;
   const search=document.getElementById('assetSearch');
-  search?.addEventListener('input',()=>{clearTimeout(search._assetTimer);search._assetTimer=setTimeout(()=>{assetLibraryState.search=search.value.trim();assetLibraryState.page=1;renderAssetLibrary();},220);});
+  search?.addEventListener('input',()=>{clearTimeout(search._assetTimer);search._assetTimer=setTimeout(async()=>{assetLibraryState.search=search.value.trim();assetLibraryState.page=1;assetLibraryState.assets=[];await loadAssetCatalog();},300);});
   ['assetCategoryFilter','assetAccessFilter','assetFormatFilter','assetSoftwareFilter','assetSortFilter'].forEach(id=>{
     document.getElementById(id)?.addEventListener('change',e=>{
       const key=id.replace('asset','').replace('Filter','').toLowerCase();
@@ -917,7 +944,7 @@ function wireAssetLibraryUI(){
     });
   });
   document.getElementById('assetResetFilters')?.addEventListener('click',resetAssetLibraryFilters);
-  document.getElementById('assetLoadMore')?.addEventListener('click',()=>{assetLibraryState.page++;renderAssetLibrary();});
+  document.getElementById('assetLoadMore')?.addEventListener('click',async()=>{await loadAssetCatalog({append:true});});
   document.getElementById('assetCollectionsGrid')?.addEventListener('click',e=>{
     const btn=e.target.closest('[data-asset-collection]');if(!btn)return;
     assetLibraryState.collection=btn.dataset.assetCollection;assetLibraryState.page=1;renderAssetLibrary();
@@ -947,7 +974,7 @@ function renderServiceAssetLibrary(){
 async function loadMyAssets(){
   const host=document.getElementById('myAssetList');if(!host)return;
   if(!db){host.innerHTML='<div class="asset-empty-v2">Connect your account to view My Library.</div>';return;}
-  const {data:{session}}=await db.auth.getSession();
+  const session=await getCurrentSession();
   if(!session?.user){host.innerHTML='<div class="asset-empty-v2"><strong>Your saved assets live here.</strong><span>Log in to view favorites and unlocked downloads.</span></div>';return;}
   const {data:favs}=await db.from('asset_favorites').select('asset_id,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(12);
   const ids=(favs||[]).map(r=>r.asset_id);
@@ -1104,7 +1131,7 @@ function setupAdminAssetLibrary(){
    ============================================================ */
 async function isCurrentUserAdmin(){
   if(!db)return false;
-  const {data:{session}}=await db.auth.getSession();
+  const session=await getCurrentSession();
   if(!session?.user)return false;
   const {data:profile}=await db.from('profiles').select('role,is_admin').eq('id',session.user.id).maybeSingle();
   return profile?.role==='admin'||profile?.is_admin===true;
@@ -1238,7 +1265,7 @@ async function loadAdminAssetStats(){
   const {data:assets}=await db.from('asset_library').select('id,access_type,downloads_count');
   const rows=assets||[];
   const total=rows.length,free=rows.filter(a=>a.access_type==='free').length,premium=rows.filter(a=>a.access_type==='premium').length;
-  const downloads=rows.reduce((sum,a)=>sum+Number(a.downloads_count||0),0);
+  const downloads=(downloadRows||[]).reduce((sum,a)=>sum+Number(a.downloads_count||0),0);
   const values=[total,free,premium,downloads];
   host.querySelectorAll('div strong').forEach((el,i)=>el.textContent=Number(values[i]||0).toLocaleString('en-IN'));
 }

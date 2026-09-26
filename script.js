@@ -920,12 +920,6 @@ function wireAssetLibraryUI(){
   });
   document.getElementById('assetResetFilters')?.addEventListener('click',resetAssetLibraryFilters);
   document.getElementById('assetLoadMore')?.addEventListener('click',()=>{assetLibraryState.page++;renderAssetLibrary();});
-  document.getElementById('assetCategoryCards')?.addEventListener('click',e=>{
-    const btn=e.target.closest('[data-asset-category-filter]');if(!btn)return;
-    assetLibraryState.category=btn.dataset.assetCategoryFilter||'';assetLibraryState.page=1;
-    document.getElementById('assetCategoryFilter')&&(document.getElementById('assetCategoryFilter').value=assetLibraryState.category);
-    document.querySelectorAll('[data-asset-category-filter]').forEach(x=>x.classList.toggle('active',x===btn));renderAssetLibrary();
-  });
   document.getElementById('assetCollectionsGrid')?.addEventListener('click',e=>{
     const btn=e.target.closest('[data-asset-collection]');if(!btn)return;
     assetLibraryState.collection=btn.dataset.assetCollection;assetLibraryState.page=1;renderAssetLibrary();
@@ -1343,20 +1337,6 @@ function setupAdminAssetTaxonomy(){
     }
   });
 }
-function setupAdminServiceAssetLinks(){
-  if(window.__starVisualsAdminServiceAssetLinks)return;
-  const select=document.getElementById('serviceAssetService'), host=document.getElementById('serviceAssetOptions');
-  if(!select||!host)return;
-  window.__starVisualsAdminServiceAssetLinks=true;
-  const refresh=async()=>{await loadAssetCategories();await loadAssetCatalog();await loadServiceAssetAssignments();};
-  select.addEventListener('change',renderServiceAssetAdminOptions);
-  document.getElementById('serviceAssetSearch')?.addEventListener('input',()=>{clearTimeout(window.__serviceAssetSearchTimer);window.__serviceAssetSearchTimer=setTimeout(renderServiceAssetAdminOptions,150);});
-  document.getElementById('serviceAssetSave')?.addEventListener('click',saveServiceAssetAssignments);
-  document.getElementById('serviceAssetClear')?.addEventListener('click',()=>{host.querySelectorAll('[data-service-asset]').forEach(input=>input.checked=false);});
-  document.getElementById('serviceAssetRefresh')?.addEventListener('click',refresh);
-  refresh();
-}
-
 function setupAdminStudio(){
   if(window.__starVisualsAdminStudioSetup)return;
   if(!document.getElementById('adminServiceList'))return;

@@ -776,8 +776,8 @@ function renderAssetCategoryCards(){
   const host=document.getElementById('assetCategoryCards');if(!host)return;
   const counts=new Map();
   assetLibraryState.assets.forEach(a=>counts.set(a.category,(counts.get(a.category)||0)+1));
-  host.innerHTML=`<a class="asset-category-card-v2 ${assetLibraryState.category?'':'active'}" href="assets.html"><span class="asset-category-card-v2-name">All</span><span>${assetLibraryState.assets.length}</span></a>`+
-    ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>`<a class="asset-category-card-v2 ${assetLibraryState.category===c.name?'active':''}" href="assets.html?category=${assetCategorySlug(c.name)}"><span class="asset-category-card-v2-name">${escapeHtml(c.name)}</span><span>${counts.get(c.name)||0}</span></a>`).join('');
+  host.innerHTML=`<a class="asset-category-card-v2 ${assetLibraryState.category?'':'active'}" href="assets.html"><span class="asset-category-card-v2-name">All</span><span>Browse →</span></a>`+
+    ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>`<a class="asset-category-card-v2 ${assetLibraryState.category===c.name?'active':''}" href="assets.html?category=${assetCategorySlug(c.name)}"><span class="asset-category-card-v2-name">${escapeHtml(c.name)}</span><span>Browse →</span></a>`).join('');
 }
 function renderAssetLibrary(){
   const categoryMode=Boolean(assetLibraryState.category);
@@ -821,7 +821,7 @@ function renderAssetLibrary(){
   const visible=assetLibraryState.assets.filter(assetMatchesFilters);
   const grid=document.getElementById('assetLibraryGrid');
   const resultCount=document.getElementById('assetResultCount');
-  if(resultCount)resultCount.textContent=`${visible.length} asset${visible.length===1?'':'s'} found`;
+  if(resultCount)resultCount.textContent=`${visible.length}${assetLibraryState.hasMore?'+':''} asset${visible.length===1?'':'s'} loaded`;
   if(grid){
     const end=assetLibraryState.page*ASSET_PAGE_SIZE;
     const pageItems=visible.slice(0,end);

@@ -707,7 +707,7 @@ async function loadAssetCategories(){
 }
 async function loadAssetCollections(includeAdmin=false){
   if(!db)return [];
-  const {data,error}=await db.from('asset_collections').select('*').order('sort_order').order('created_at');
+  const {data,error}=await db.from('asset_collections').select('id,name,description,thumbnail_url,published,sort_order,created_at').order('sort_order').order('created_at').limit(100);
   if(error)return [];
   const collections=data||[];
   assetLibraryState.collections=collections;
@@ -998,18 +998,18 @@ function adminAssetStoragePath(accessType,file){return `${STAR_VISUALS_ASSET_FOL
 function parseAdminTags(value){return String(value||'').split(',').map(v=>v.trim()).filter(Boolean).slice(0,30);}
 async function loadAdminAssetCollections(){
   const select=document.getElementById('assetCollection');if(!select||!db)return;
-  const {data,error}=await db.from('asset_collections').select('*').order('sort_order').order('created_at');
+  const {data,error}=await db.from('asset_collections').select('id,name,description,thumbnail_url,published,sort_order,created_at').order('sort_order').order('created_at').limit(100);
   if(error){select.innerHTML='<option value="">No collections available</option>';return;}
   select.innerHTML='<option value="">No collection</option>'+(data||[]).map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
 }
 async function loadAdminAssets(){
   const list=document.getElementById('adminAssetList');if(!list||!db)return;
-  const {data,error}=await db.from('asset_library').select('*').order('created_at',{ascending:false});
+  const {data,error}=await db.from('asset_library').select('id,name,description,category,subcategory,tags,thumbnail_url,preview_url,file_url,external_download_url,file_type,file_size,software,software_compatibility,access_type,price,published,downloads_count,created_at,featured,trending').order('created_at',{ascending:false}).limit(100);
   if(error){list.innerHTML=`<div class="admin-empty">Assets could not be loaded: ${escapeHtml(friendlyError(error))}</div>`;return;}
   list.innerHTML=(data||[]).map(asset=>`<article class="admin-request asset-admin-row-v2"><div class="admin-request-head"><div><span class="admin-index">${asset.published?'Published':'Draft'} · ${asset.access_type==='premium'?'Premium':'Free'}</span><h3>${escapeHtml(asset.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-asset-edit="${escapeHtml(asset.id)}">Edit</button><button class="outline-btn" type="button" data-asset-delete="${escapeHtml(asset.id)}">Delete</button></div></div><div class="admin-request-grid"><div><span>CATEGORY</span><strong>${escapeHtml(asset.category||'—')}</strong></div><div><span>FORMAT</span><strong>${escapeHtml(asset.file_type||'—')}</strong></div><div><span>DOWNLOADS</span><strong>${Number(asset.downloads_count||0)}</strong></div><div><span>FLAGS</span><strong>${[asset.featured&&'Featured',asset.trending&&'Trending'].filter(Boolean).join(' · ')||'—'}</strong></div></div></article>`).join('')||'<div class="admin-empty">No assets have been uploaded yet.</div>';
 }
 async function deleteAssetAndOwnedFiles(assetId){
-  const {data:asset,error}=await db.from('asset_library').select('*').eq('id',assetId).maybeSingle();
+  const {data:asset,error}=await db.from('asset_library').select('id,name,description,category,subcategory,tags,thumbnail_url,preview_url,file_url,external_download_url,file_type,file_size,software,software_compatibility,access_type,price,published,downloads_count,created_at,featured,trending').eq('id',assetId).maybeSingle();
   if(error||!asset)throw error||new Error('Asset not found.');
   const paths=[asset.file_url,asset.thumbnail_url,asset.preview_url].map(getStoragePath).filter(Boolean);
   const refs=[];
@@ -1146,7 +1146,7 @@ async function loadPublicServices(){
   const host=document.getElementById('servicesPricing');
   if(!host){return;}
   if(!db){wireStaticServiceRows();return;}
-  const {data,error}=await db.from('service_packages').select('*').eq('published',true).order('sort_order');
+  const {data,error}=await db.from('service_packages').select('id,name,description,price_display,sort_order,published').eq('published',true).order('sort_order').limit(100);
   if(error||!data?.length)return;
   host.innerHTML=`<div class="pricing-head"><span>✦ EDITING SERVICE / PACKAGE</span><span>STARTING PRICE</span></div>`+
     data.map((service,index)=>`<button class="price-row service-price-row" type="button" data-service-name="${escapeHtml(service.name)}"><div><span class="price-index">${String(index+1).padStart(2,'0')}</span><strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.description||'Professional editing service')}</small></div><b>${escapeHtml(service.price_display||'Contact for quote')}</b></button>`).join('');
@@ -1167,7 +1167,7 @@ function wireStaticServiceRows(){
 async function loadAdminServices(){
   const list=document.getElementById('adminServiceList');
   if(!list||!db)return;
-  const {data,error}=await db.from('service_packages').select('*').order('sort_order');
+  const {data,error}=await db.from('service_packages').select('id,name,description,price_display,sort_order,published').order('sort_order').limit(100);
   if(error){list.innerHTML='<div class="admin-empty">Services could not be loaded. Run the admin migration SQL first.</div>';return;}
   list.innerHTML=(data||[]).map(s=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${s.published?'Published':'Draft'}</span><h3>${escapeHtml(s.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-service-edit="${s.id}">Edit price</button><button class="outline-btn" type="button" data-service-delete="${s.id}">Delete</button></div></div><div class="admin-request-grid"><div><span>PRICE</span><strong>${escapeHtml(s.price_display)}</strong></div><div><span>ORDER</span><strong>${Number(s.sort_order||0)}</strong></div><div><span>STATUS</span><strong>${s.published?'LIVE':'DRAFT'}</strong></div></div><div class="admin-brief"><span>DESCRIPTION</span><p>${escapeHtml(s.description||'')}</p></div></article>`).join('')||'<div class="admin-empty">No services yet.</div>';
 }
@@ -1196,7 +1196,7 @@ async function loadAdminCourses(){
   const list=document.getElementById('adminCourseList');
   const select=document.getElementById('lessonCourseId');
   if(!db||(!list&&!select))return;
-  const {data,error}=await db.from('courses').select('*').order('sort_order').order('created_at');
+  const {data,error}=await db.from('courses').select('id,title,description,duration,delivery,price_inr,slug,category,sort_order,published,created_at').order('sort_order').order('created_at').limit(100);
   if(error){if(list)list.innerHTML='<div class="admin-empty">Courses could not be loaded.</div>';return;}
   if(select)select.innerHTML='<option value="">Select course</option>'+(data||[]).map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.title)}</option>`).join('');
   if(list)list.innerHTML=(data||[]).map(c=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${c.published?'Published':'Draft'}</span><h3>${escapeHtml(c.title)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-course-edit="${c.id}">Edit</button><button class="outline-btn" type="button" data-course-delete="${c.id}">Delete</button></div></div><div class="admin-request-grid"><div><span>PRICE</span><strong>₹${Number(c.price_inr||0).toLocaleString('en-IN')}</strong></div><div><span>DURATION</span><strong>${escapeHtml(c.duration||'—')}</strong></div><div><span>ID</span><strong>${escapeHtml(c.id)}</strong></div></div><div class="admin-brief"><span>DESCRIPTION</span><p>${escapeHtml(c.description||'')}</p></div></article>`).join('')||'<div class="admin-empty">No courses yet.</div>';
@@ -1218,7 +1218,7 @@ async function saveCourseForm(event){
 async function loadAdminLessons(courseId){
   const list=document.getElementById('adminLessonList');if(!list||!db)return;
   if(!courseId){list.innerHTML='<div class="admin-empty">Select a course to view lessons.</div>';return;}
-  const {data,error}=await db.from('course_lessons').select('*').eq('course_id',courseId).order('lesson_order');
+  const {data,error}=await db.from('course_lessons').select('id,course_id,title,lesson_order,content_type,file_path,external_url,published,created_at').eq('course_id',courseId).order('lesson_order').limit(200);
   if(error){list.innerHTML='<div class="admin-empty">Lessons could not be loaded.</div>';return;}
   const lessonIds=(data||[]).map(l=>l.id);
   const {data:materialRows}=lessonIds.length?await db.from('course_lesson_materials').select('lesson_id').in('lesson_id',lessonIds):{data:[]};
@@ -1262,14 +1262,15 @@ async function saveLessonForm(event){
 
 async function loadAdminAssetStats(){
   const host=document.getElementById('assetAdminStats');if(!host||!db)return;
-  const {data:assets}=await db.from('asset_library').select('id,access_type,downloads_count');
-  const rows=assets||[];
-  const total=rows.length,free=rows.filter(a=>a.access_type==='free').length,premium=rows.filter(a=>a.access_type==='premium').length;
-  const downloads=(downloadRows||[]).reduce((sum,a)=>sum+Number(a.downloads_count||0),0);
-  const values=[total,free,premium,downloads];
+  const [{count:total},{count:free},{count:premium},{count:downloads}]=await Promise.all([
+    db.from('asset_library').select('id',{count:'exact',head:true}),
+    db.from('asset_library').select('id',{count:'exact',head:true}).eq('access_type','free'),
+    db.from('asset_library').select('id',{count:'exact',head:true}).eq('access_type','premium'),
+    db.from('asset_downloads').select('id',{count:'exact',head:true})
+  ]);
+  const values=[total||0,free||0,premium||0,downloads||0];
   host.querySelectorAll('div strong').forEach((el,i)=>el.textContent=Number(values[i]||0).toLocaleString('en-IN'));
 }
-
 function setupAdminStudio(){
   if(window.__starVisualsAdminStudioSetup)return;
   if(!document.getElementById('adminServiceList'))return;

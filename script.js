@@ -860,7 +860,7 @@ function resetAssetLibraryFilters(){
   assetLibraryState={...assetLibraryState,page:1,search:'',category:'',access:'',format:'',software:'',sort:'newest',collection:'',featured:false,trending:false};
   {const el=document.getElementById('assetSearch');if(el)el.value='';}
   document.querySelectorAll('[data-asset-filter]').forEach(el=>el.value=el.dataset.assetFilterDefault||'');
-  renderAssetLibrary();
+  assetLibraryState.assets=[];loadAssetCatalog();
 }
 function openAssetDetail(assetId){
   const asset=findAssetById(assetId);if(!asset)return;

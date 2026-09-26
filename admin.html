@@ -46,33 +46,7 @@
     </section>
 
     <section class="section admin-section">
-      <div class="admin-toolbar"><div><p class="eyebrow">SERVICE ASSETS</p><h2>Assign assets to editing services</h2><button class="outline-btn" type="button" id="serviceAssetRefresh">Refresh assignments</button></div>
-      <p class="auth-note" id="serviceAssetStatus">Choose a service, select the creator assets that belong with it, then save. These assignments control the Asset Library shown inside each service section.</p>
-      <div class="asset-admin-form admin-editor-form">
-        <div class="form-grid">
-          <label>Editing service<select id="serviceAssetService" required><option value="">Loading services…</option></select></label>
-          <label>Asset search<input id="serviceAssetSearch" type="search" placeholder="Search asset name, category or format…"></label>
-        </div>
-        <div class="asset-admin-actions"><button class="btn" type="button" id="serviceAssetSave">Save service assets</button><button class="outline-btn" type="button" id="serviceAssetClear">Clear selection</button></div>
-      </div>
-      <div class="asset-admin-list" id="serviceAssetOptions"><div class="admin-empty">Loading asset assignments…</div></div>
-    </section>
 
-    <section class="section admin-section">
-      <div class="admin-toolbar"><div><p class="eyebrow">COURSES</p><h2>Manage courses & lessons</h2></div><button class="outline-btn" type="button" id="courseRefresh">Refresh courses</button></div>
-      <p class="auth-note" id="courseAdminStatus">Create courses, edit prices and attach video/files for enrolled students.</p>
-      <form class="asset-admin-form admin-editor-form" id="courseAdminForm">
-        <input type="hidden" id="courseEditId" value="">
-        <div class="form-grid">
-          <label>Course title<input id="adminCourseTitle" required></label>
-          <label>Slug<input id="adminCourseSlug" placeholder="professional-video-editing"></label>
-          <label>Category<input id="adminCourseCategory"></label>
-          <label>Price (₹)<input id="adminCoursePrice" type="number" min="0" value="0"></label>
-          <label>Duration<input id="adminCourseDuration" placeholder="4 WEEKS"></label>
-          <label>Delivery<input id="adminCourseDelivery" placeholder="LIVE + PRACTICE"></label>
-          <label>Sort order<input id="adminCourseSort" type="number" min="0" value="1"></label>
-          <label>Published<select id="adminCoursePublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
-        </div>
         <label>Description<textarea id="adminCourseDescription" rows="4"></textarea></label>
         <div class="asset-admin-actions"><button class="btn" type="submit">Save course</button><button class="outline-btn" type="button" id="courseReset">New course</button></div>
       </form>

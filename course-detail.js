@@ -180,6 +180,6 @@
   });
 
   enrollBtn?.addEventListener('click', enrollCourse);
-  window.addEventListener('load', loadCourse);
-  if (document.readyState !== 'loading') loadCourse();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',loadCourse,{once:true});
+  else loadCourse();
 })();

@@ -46,8 +46,25 @@
     </section>
 
     <section class="section admin-section">
-
+      <div class="admin-toolbar"><div><p class="eyebrow">COURSES</p><h2>Manage courses</h2></div><button class="outline-btn" type="button" id="courseRefresh">Refresh courses</button></div>
+      <form class="asset-admin-form admin-editor-form" id="courseAdminForm">
+        <input type="hidden" id="courseEditId" value="">
+        <div class="form-grid">
+          <label>Course title<input id="adminCourseTitle" required></label>
+          <label>Slug<input id="adminCourseSlug" placeholder="editing-from-scratch"></label>
+          <label>Category<input id="adminCourseCategory" placeholder="FOUNDATION"></label>
+          <label>Price (₹)<input id="adminCoursePrice" type="number" min="0" value="0"></label>
+          <label>Duration<input id="adminCourseDuration" placeholder="4 WEEKS"></label>
+          <label>Delivery<input id="adminCourseDelivery" placeholder="LIVE + PRACTICE"></label>
+          <label>Sort order<input id="adminCourseSort" type="number" min="0" value="0"></label>
+          <label>Published<select id="adminCoursePublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
+        </div>
         <label>Description<textarea id="adminCourseDescription" rows="4"></textarea></label>
+        <div class="asset-admin-actions"><button class="btn" type="submit">Save course</button><button class="outline-btn" type="button" id="courseReset">New course</button></div>
+        <p class="auth-note" id="courseAdminStatus">Create, edit, publish or remove courses without affecting course lessons.</p>
+      </form>
+      <div class="admin-request-list" id="adminCourseList"><div class="admin-empty">Loading courses…</div></div>
+    </section>
         <div class="asset-admin-actions"><button class="btn" type="submit">Save course</button><button class="outline-btn" type="button" id="courseReset">New course</button></div>
       </form>
       <div class="admin-request-list" id="adminCourseList"><div class="admin-empty">Loading courses…</div></div>
@@ -119,23 +136,6 @@
     </form>
     <div class="asset-admin-list" id="adminAssetList"><div class="admin-empty">Loading assets…</div></div>
   </div>
-</section>
-
-<section class="section admin-section">
-  <div class="admin-toolbar"><div><p class="eyebrow">COLLECTIONS</p><h2>Manage creator packs</h2></div></div>
-  <form class="asset-admin-form admin-editor-form" id="assetCollectionForm">
-    <input type="hidden" id="assetCollectionEditId" value="">
-    <div class="form-grid">
-      <label>Collection name<input id="assetCollectionName" required></label>
-      <label>Sort order<input id="assetCollectionSort" type="number" min="0" value="0"></label>
-      <label>Thumbnail URL<input id="assetCollectionThumbnail" placeholder="assets/asset-pack/asset-library-cover.svg"></label><label class="file-field">Upload collection thumbnail<input id="assetCollectionThumbnailFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
-      <label>Status<select id="assetCollectionPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
-    </div>
-    <label>Description<textarea id="assetCollectionDescription" rows="3"></textarea></label>
-    <div class="asset-admin-actions"><button class="btn" type="submit">Save collection</button><button class="outline-btn" type="button" id="assetCollectionReset">New collection</button></div>
-    <p class="auth-note" id="assetCollectionStatus">Collections control the curated packs shown in the public Asset Library.</p>
-  </form>
-  <div class="asset-admin-list" id="adminAssetCollectionList"><div class="admin-empty">Loading collections…</div></div>
 </section>
 
 <section class="section admin-section">

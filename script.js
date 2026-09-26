@@ -665,7 +665,7 @@ function assetCardsMarkup(assets){
         <h3>${escapeHtml(item.name)}</h3>
         <p>${escapeHtml(item.description||'Creator-ready resource for faster production.')}</p>
         <div class="asset-card-v2-tags">${tags}</div>
-        <div class="asset-card-v2-foot"><strong>${formatAssetPrice(item)}</strong><button class="outline-btn" type="button" data-asset-open="${escapeHtml(String(item.id))}">View</button></div>
+        <div class="asset-card-v2-foot"><strong>${formatAssetPrice(item)}</strong><div style="display:flex;gap:7px"><button class="outline-btn" type="button" data-asset-open="${escapeHtml(String(item.id))}">View</button><button class="outline-btn" type="button" data-asset-download="${escapeHtml(String(item.id))}">Download</button></div></div>
       </div>
     </article>`;
   }).join('');
@@ -751,8 +751,8 @@ function renderAssetCategoryCards(){
   const host=document.getElementById('assetCategoryCards');if(!host)return;
   const counts=new Map();
   assetLibraryState.assets.forEach(a=>counts.set(a.category,(counts.get(a.category)||0)+1));
-  host.innerHTML=`<a class="asset-category-card-v2 active" href="assets.html"><span class="asset-category-card-v2-name">All</span><span>${assetLibraryState.assets.length}</span></a>`+
-    ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>`<a class="asset-category-card-v2" href="assets.html?category=${assetCategorySlug(c.name)}"><span class="asset-category-card-v2-name">${escapeHtml(c.name)}</span><span>${counts.get(c.name)||0}</span></a>`).join('');
+  host.innerHTML=`<a class="asset-category-card-v2 ${assetLibraryState.category?'':'active'}" href="assets.html"><span class="asset-category-card-v2-name">All</span><span>${assetLibraryState.assets.length}</span></a>`+
+    ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>`<a class="asset-category-card-v2 ${assetLibraryState.category===c.name?'active':''}" href="assets.html?category=${assetCategorySlug(c.name)}"><span class="asset-category-card-v2-name">${escapeHtml(c.name)}</span><span>${counts.get(c.name)||0}</span></a>`).join('');
 }
 function renderAssetLibrary(){
   const categoryMode=Boolean(assetLibraryState.category);

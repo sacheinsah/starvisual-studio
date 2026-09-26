@@ -68,13 +68,8 @@ grant select on public.asset_library to anon, authenticated;
 grant insert, update, delete on public.asset_library to authenticated;
 
 insert into storage.buckets (id,name,public,file_size_limit)
-values ('star-assets','star-assets',true,524288000)
-on conflict (id) do update set public=true, file_size_limit=524288000;
-
-drop policy if exists "star_assets_public_read" on storage.objects;
-create policy "star_assets_public_read" on storage.objects
-for select to anon, authenticated
-using (bucket_id='star-assets');
+values ('star-assets','star-assets',false,524288000)
+on conflict (id) do update set public=false, file_size_limit=524288000;
 
 drop policy if exists "star_assets_admin_insert" on storage.objects;
 create policy "star_assets_admin_insert" on storage.objects

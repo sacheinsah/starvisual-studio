@@ -87,36 +87,88 @@
     </section>
 
     <section class="section admin-section asset-admin-section">
-      <div class="admin-toolbar"><div><p class="eyebrow">ASSET LIBRARY</p><h2>Manage downloadable resources</h2></div></div>
-      <div class="asset-admin-box">
-        <form class="asset-admin-form" id="assetForm">
-          <input type="hidden" id="assetEditId" value="">
-          <div class="form-grid">
-            <label>Asset name<input name="name" id="assetName" required></label>
-            <label>Asset Library category<select name="category" id="assetCategory" required>
-              <option value="">Loading categories…</option>
-            </select></label>
-            <label>Software<input name="software" id="assetSoftware" placeholder="Premiere Pro / After Effects / DaVinci Resolve"></label>
-            <label>File type<input name="file_type" id="assetFileType" placeholder="ZIP / MP4 / MOV"></label>
-            <label>File size<input name="file_size" id="assetFileSize" placeholder="48 MB"></label>
-            <label>Access<select name="access_type" id="assetAccessType"><option value="free">Free</option><option value="premium">Premium</option></select></label>
-            <label>Price (₹)<input type="number" name="price" id="assetPrice" min="0" value="0"></label>
-            <label>Thumbnail URL<input name="thumbnail_url" id="assetThumbnail" value="assets/asset-pack/asset-library-cover.svg"></label>
-            <label class="file-field">Upload thumbnail<input id="assetUploadThumbnail" type="file" accept="image/*"></label>
-            <label>Preview URL<input name="preview_url" id="assetPreview" placeholder="Optional preview/content URL"></label>
-            <label>File URL<input name="file_url" id="assetFileUrl" placeholder="Optional if using uploaded file or external link"></label>
-            <label class="file-field">Upload asset file<input id="assetUploadFile" type="file"></label>
-            <label>External Download Link<input name="external_download_url" id="assetExternalDownload" type="url" placeholder="https://... (optional)"></label>
-            <label>Published<select name="published" id="assetPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
-          </div>
-          <label>Description<textarea name="description" id="assetDescription" rows="4"></textarea></label>
-          <div class="asset-admin-actions"><button class="btn" type="submit">Save asset</button><button class="outline-btn" type="button" id="assetResetForm">Reset</button></div>
-          <p class="auth-note" id="assetStatus">Ready to add a new resource. Uploaded asset files and thumbnails use the Supabase <strong>star-assets</strong> bucket under <strong>asset-pack/</strong>.</p>
-        </form>
-        <div class="asset-admin-list" id="adminAssetList"><div class="admin-empty">Loading assets…</div></div>
+  <div class="admin-toolbar">
+    <div><p class="eyebrow">ASSET LIBRARY</p><h2>Complete asset management</h2></div>
+    <button class="outline-btn" type="button" id="assetCollectionRefresh">Refresh library</button>
+  </div>
+  <div class="asset-admin-stats-v2" id="assetAdminStats">
+    <div><span>TOTAL ASSETS</span><strong>—</strong></div><div><span>FREE</span><strong>—</strong></div><div><span>PREMIUM</span><strong>—</strong></div><div><span>COLLECTIONS</span><strong>—</strong></div><div><span>DOWNLOADS</span><strong>—</strong></div>
+  </div>
+
+  <div class="asset-admin-box">
+    <form class="asset-admin-form admin-editor-form" id="assetForm">
+      <input type="hidden" id="assetEditId" value="">
+      <div class="admin-toolbar"><div><p class="eyebrow">CREATE / UPDATE</p><h3>Asset editor</h3></div></div>
+      <div class="form-grid">
+        <label>Asset name<input name="name" id="assetName" required></label>
+        <label>Category<select name="category" id="assetCategory" required><option value="">Loading categories…</option></select></label>
+        <label>Subcategory<input name="subcategory" id="assetSubcategory" placeholder="Cinematic / YouTube / Social"></label>
+        <label>Tags<input name="tags" id="assetTags" placeholder="cinematic, creator, reels"></label>
+        <label>Software / primary compatibility<input name="software" id="assetSoftware" placeholder="Premiere Pro"></label>
+        <label>Software compatibility<input name="software_compatibility" id="assetCompatibility" placeholder="Premiere Pro, DaVinci Resolve"></label>
+        <label>File type<input name="file_type" id="assetFileType" placeholder="ZIP / CUBE / MP4"></label>
+        <label>File size<input name="file_size" id="assetFileSize" placeholder="48 MB (auto detected on upload)"></label>
+        <label>Access<select name="access_type" id="assetAccessType"><option value="free">Free</option><option value="premium">Premium</option></select></label>
+        <label>Price (₹)<input type="number" name="price" id="assetPrice" min="0" value="0"></label>
+        <label>Collection<select id="assetCollection"><option value="">No collection</option></select></label>
+        <label>Published<select name="published" id="assetPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
       </div>
-    </section>
-  </main>
+      <label>Description<textarea name="description" id="assetDescription" rows="4" placeholder="What this asset does and who it is for."></textarea></label>
+      <div class="form-grid">
+        <label>Thumbnail URL<input name="thumbnail_url" id="assetThumbnail" value="assets/asset-pack/asset-library-cover.svg"></label>
+        <label class="file-field">Upload thumbnail<input id="assetUploadThumbnail" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+        <label>Preview URL<input name="preview_url" id="assetPreview" placeholder="Optional image/video/audio preview"></label>
+        <label class="file-field">Upload preview<input id="assetUploadPreview" type="file" accept="image/*,video/*,audio/*"></label>
+        <label>Existing storage/file path or trusted external file URL<input name="file_url" id="assetFileUrl" placeholder="Prefer uploading the file below"></label>
+        <label class="file-field">Upload original asset<input id="assetUploadFile" type="file"></label>
+        <label>External download link<input name="external_download_url" id="assetExternalDownload" type="url" placeholder="https://... (only for intentionally external files)"></label>
+      </div>
+      <div class="asset-admin-checks-v2">
+        <label><input type="checkbox" id="assetFeatured"> Featured</label>
+        <label><input type="checkbox" id="assetTrending"> Trending</label>
+      </div>
+      <div class="asset-admin-actions"><button class="btn" type="submit">Save asset</button><button class="outline-btn" type="button" id="assetResetForm">New asset</button></div>
+      <p class="auth-note" id="assetStatus">New uploads are validated in the browser and again by Supabase Storage policies/triggers. Original files are stored privately.</p>
+    </form>
+    <div class="asset-admin-list" id="adminAssetList"><div class="admin-empty">Loading assets…</div></div>
+  </div>
+</section>
+
+<section class="section admin-section">
+  <div class="admin-toolbar"><div><p class="eyebrow">COLLECTIONS</p><h2>Manage creator packs</h2></div></div>
+  <form class="asset-admin-form admin-editor-form" id="assetCollectionForm">
+    <input type="hidden" id="assetCollectionEditId" value="">
+    <div class="form-grid">
+      <label>Collection name<input id="assetCollectionName" required></label>
+      <label>Sort order<input id="assetCollectionSort" type="number" min="0" value="0"></label>
+      <label>Thumbnail URL<input id="assetCollectionThumbnail" placeholder="assets/asset-pack/asset-library-cover.svg"></label><label class="file-field">Upload collection thumbnail<input id="assetCollectionThumbnailFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+      <label>Status<select id="assetCollectionPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
+    </div>
+    <label>Description<textarea id="assetCollectionDescription" rows="3"></textarea></label>
+    <div class="asset-admin-actions"><button class="btn" type="submit">Save collection</button><button class="outline-btn" type="button" id="assetCollectionReset">New collection</button></div>
+    <p class="auth-note" id="assetCollectionStatus">Collections control the curated packs shown in the public Asset Library.</p>
+  </form>
+  <div class="asset-admin-list" id="adminAssetCollectionList"><div class="admin-empty">Loading collections…</div></div>
+</section>
+
+<section class="section admin-section">
+  <div class="admin-toolbar"><div><p class="eyebrow">CATEGORIES</p><h2>Manage asset categories</h2></div></div>
+  <form class="asset-admin-form admin-editor-form" id="assetCategoryForm">
+    <input type="hidden" id="assetCategoryEditId" value="">
+    <div class="form-grid">
+      <label>Category name<input id="assetCategoryName" required></label>
+      <label>Sort order<input id="assetCategorySort" type="number" min="0" value="0"></label>
+      <label>Thumbnail URL<input id="assetCategoryThumbnail" placeholder="assets/asset-pack/asset-library-cover.svg"></label><label class="file-field">Upload category thumbnail<input id="assetCategoryThumbnailFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+      <label>Status<select id="assetCategoryPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
+    </div>
+    <label>Description<textarea id="assetCategoryDescription" rows="3"></textarea></label>
+    <div class="asset-admin-actions"><button class="btn" type="submit">Save category</button><button class="outline-btn" type="button" id="assetCategoryReset">New category</button></div>
+    <p class="auth-note" id="assetCategoryStatus">Do not delete a category until its assets have been moved elsewhere.</p>
+  </form>
+  <div class="asset-category-admin-grid" id="adminAssetCategoryList"><div class="admin-empty">Loading categories…</div></div>
+</section>
+
+</main>
   <footer><span>✦ STAR VISUALS</span><span>Private admin workspace</span><span>© 2026</span></footer>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>

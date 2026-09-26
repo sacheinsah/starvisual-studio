@@ -5,7 +5,7 @@
 
 -- The frontend uses exactly one bucket for uploaded creative assets.
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('star-assets', 'star-assets', true, 524288000)
+values ('star-assets', 'star-assets', false, 524288000)
 on conflict (id) do update
 set name = excluded.name,
     public = true,

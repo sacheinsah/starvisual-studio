@@ -492,210 +492,53 @@ projectForm?.addEventListener('submit',async e=>{
   toast('Project enquiry sent to STAR VISUALS.');
 });
 
+
+/* ============================================================
+   STAR VISUALS — CANONICAL ASSET LIBRARY V2
+   One catalog, one detail experience, secure downloads.
+   ============================================================ */
 const DEFAULT_ASSET_CATEGORIES=[
-  {id:'cinematic-reel-pack',name:'Cinematic Reel Pack',description:'Cinematic reel templates and storytelling resources.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
-  {id:'premium-motion-pack',name:'Premium Motion Pack',description:'Premium motion graphics, presets and animation resources.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
-  {id:'thumbnail-formula-pack',name:'Thumbnail Formula Pack',description:'Thumbnail systems and visual formulas for creators.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
-  {id:'reel-transition-pack',name:'Reel Transition Pack',description:'Transitions and finishing assets for short-form edits.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
-  {id:'cinematic-lut-pack',name:'Cinematic LUT Pack',description:'Cinematic colour presets and LUT resources.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
-  {id:'creator-sfx-bundle',name:'Creator SFX Bundle',description:'Impacts, whooshes, ambience and creator sound effects.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
-  {id:'creator-asset-pack',name:'Creator Asset Pack',description:'General creator resources, overlays and production assets.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'}
+  {id:'templates',name:'Templates',description:'Editable project templates and creator-ready production systems.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'luts',name:'LUTs',description:'Cinematic colour grading LUTs for modern editing workflows.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'presets',name:'Presets',description:'Reusable editing presets for speed and consistency.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'sfx',name:'SFX',description:'Impacts, whooshes, ambience and creator sound effects.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'music',name:'Music',description:'Music beds and creator-friendly audio resources.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'overlays',name:'Overlays',description:'Light leaks, particles, textures and visual overlays.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'transitions',name:'Transitions',description:'Transitions for short-form, long-form and cinematic edits.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'graphics',name:'Graphics',description:'Titles, icons, social graphics and creator visuals.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'fonts',name:'Fonts',description:'Typography resources for editing and design workflows.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'3d',name:'3D',description:'3D assets and production-ready elements.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'},
+  {id:'stock',name:'Stock',description:'Stock footage, images and supporting production assets.',thumbnail_url:'assets/asset-pack/asset-library-cover.svg'}
 ];
 let ASSET_LIBRARY_CATEGORIES=DEFAULT_ASSET_CATEGORIES.map(c=>c.name);
 let ASSET_LIBRARY_CATEGORY_META=Object.fromEntries(DEFAULT_ASSET_CATEGORIES.map(c=>[c.name,c.description]));
 let ASSET_LIBRARY_CATEGORY_OBJECTS=DEFAULT_ASSET_CATEGORIES.map(c=>({...c}));
-
-const assetCatalogFallback=[];
 window.STAR_VISUALS_ASSET_CATEGORIES=window.STAR_VISUALS_ASSET_CATEGORIES||DEFAULT_ASSET_CATEGORIES;
 
 function setAssetCategories(categories){
-  const cleaned=(categories||[]).map((c)=>({
+  const cleaned=(categories||[]).map(c=>({
     id:c.id||String(c.name||'category').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
     name:String(c.name||'').trim(),
     description:String(c.description||'').trim()||'Creative assets for this category.',
-    thumbnail_url:c.thumbnail_url||'assets/asset-pack/asset-library-cover.svg'
+    thumbnail_url:c.thumbnail_url||'assets/asset-pack/asset-library-cover.svg',
+    sort_order:Number(c.sort_order||0)
   })).filter(c=>c.name);
   const seen=new Set();
-  ASSET_LIBRARY_CATEGORY_OBJECTS=cleaned.filter(c=>{const key=c.name.toLowerCase();if(seen.has(key))return false;seen.add(key);return true;});
+  ASSET_LIBRARY_CATEGORY_OBJECTS=cleaned.filter(c=>{
+    const key=c.name.toLowerCase();if(seen.has(key))return false;seen.add(key);return true;
+  }).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   ASSET_LIBRARY_CATEGORIES=ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>c.name);
   ASSET_LIBRARY_CATEGORY_META=Object.fromEntries(ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>[c.name,c.description]));
   window.STAR_VISUALS_ASSET_CATEGORIES=ASSET_LIBRARY_CATEGORY_OBJECTS;
 }
 setAssetCategories(window.STAR_VISUALS_ASSET_CATEGORIES);
 
-function dedupeAssets(assets){
-  const seen=new Set();
-  return (assets||[]).map(normalizeAsset).filter(item=>{
-    const signature=[item.name,item.category,item.file_url||item.external_download_url||'',item.thumbnail_url||''].map(v=>String(v).trim().toLowerCase()).join('|');
-    if(seen.has(signature))return false;
-    seen.add(signature);return true;
-  });
-}
-
-function normalizeAsset(asset){
-  const item={...asset};
-  item.id=item.id||String(item.name||'asset').toLowerCase().replace(/[^a-z0-9]+/g,'-');
-  item.category=String(item.category||'').trim()||ASSET_LIBRARY_CATEGORIES[0]||'Creator Asset Pack';
-  item.access_type=(item.access_type||item.accessType||'free').toLowerCase();
-  item.price=Number(item.price||0);
-  item.file_size=item.file_size||item.fileSize||'—';
-  item.software=item.software||'Any';
-  item.thumbnail_url=item.thumbnail_url||'assets/asset-pack/asset-library-cover.svg';
-  item.published=item.published!==false;
-  item.external_download_url=item.external_download_url||item.externalDownloadUrl||'';
-  return item;
-}
-function formatAssetPrice(asset){const item=normalizeAsset(asset);return item.access_type==='free'?'FREE':`₹${Number(item.price||0).toLocaleString('en-IN')}`;}
-function assetLockLabel(asset){const item=normalizeAsset(asset);return item.access_type==='premium' ? '<span class="asset-lock">Premium access</span>' : '<span class="asset-lock">Free</span>'}
-function findAssetById(assetId){const catalog=window.STAR_VISUALS_ASSET_CATALOG||[];return [...catalog].map(normalizeAsset).find((asset)=>String(asset.id)===String(assetId))||null;}
-function setAssetStatus(message,error=false){const el=document.getElementById('assetStatus');if(!el)return;el.textContent=message;el.classList.toggle('error',Boolean(error));}
-
-async function handleAssetDownload(asset){
-  const item=normalizeAsset(asset);
-  if(!db){toast('Connect Supabase in supabase-config.js to unlock asset downloads.');return;}
-  const {data:{session}}=await db.auth.getSession();
-  if(item.access_type==='premium'&&!session?.user){openAuth('email-login');toast('Log in to unlock premium assets.');return;}
-  const directUrl=item.external_download_url||item.file_url||item.preview_url;
-  if(!directUrl){toast('This asset is not available yet.');return;}
-  if(item.access_type==='premium'&&session?.user&&/^[0-9a-f-]{36}$/i.test(String(item.id))){
-    const {data:accessRecord}=await db.from('user_asset_access').select('id').eq('user_id',session.user.id).eq('asset_id',item.id).maybeSingle();
-    if(!accessRecord){
-      const {error}=await db.from('user_asset_access').insert({user_id:session.user.id,asset_id:item.id,access_type:'premium',status:'downloaded'});
-      if(error){toast(friendlyError(error));return;}
-    }
-  }
-  if(typeof window!=='undefined'&&/^https?:\/\//i.test(directUrl)){window.open(directUrl,'_blank','noopener');toast(item.access_type==='premium'?'Premium asset unlocked.':'Asset downloaded.');return;}
-  if(db.storage&&item.file_url&&!/^https?:\/\//i.test(item.file_url)){
-    const {data,error}=await assetStorage().createSignedUrl(item.file_url,3600);
-    if(error){toast(friendlyError(error));return;}
-    if(data?.signedUrl){window.open(data.signedUrl,'_blank','noopener');toast(item.access_type==='premium'?'Premium asset unlocked.':'Asset downloaded.');return;}
-  }
-  toast('This asset is not available yet.');
-}
-
-function assetCardsMarkup(assets){
-  return (assets||[]).map((asset)=>{
-    const item=normalizeAsset(asset);
-    return `<article class="asset-card ${item.access_type==='premium'?'premium':''}"><div class="asset-thumb" style="background-image:url('${escapeHtml(item.thumbnail_url)}')"><span class="asset-badge ${item.access_type==='premium'?'premium':''}">${item.access_type==='premium'?'Premium':'Free'}</span></div><div class="asset-content"><div class="asset-meta-top"><span class="asset-category">${escapeHtml(item.category)}</span>${item.access_type==='premium'?'<span class="asset-lock">Premium</span>':'<span class="asset-lock">Free</span>'}</div><h4>${escapeHtml(item.name)}</h4><p>${escapeHtml(item.description||'Creative asset for faster editing workflows.')}</p><div class="asset-specs"><div>Software<strong>${escapeHtml(item.software)}</strong></div><div>Type<strong>${escapeHtml(item.file_type||'ZIP')}</strong></div><div>Size<strong>${escapeHtml(item.file_size||'—')}</strong></div><div>Price<strong>${formatAssetPrice(item)}</strong></div></div><div class="asset-price">${formatAssetPrice(item)}</div><div class="asset-actions"><button class="asset-button" type="button" data-asset-id="${escapeHtml(String(item.id))}" data-asset-action="preview">Preview</button><button class="asset-button primary" type="button" data-asset-id="${escapeHtml(String(item.id))}" data-asset-action="download">${item.access_type==='premium'?'Get Asset':'Download'}</button></div></div></article>`;
-  }).join('');
-}
-
-function renderAssetCards(containerId, assets){
-  const list=document.getElementById(containerId); if(!list)return;
-  const catalog=(assets||window.STAR_VISUALS_ASSET_CATALOG||[]).map(normalizeAsset);
-  window.STAR_VISUALS_ASSET_CATALOG=catalog;
-  if(!catalog.length){list.innerHTML='<div class="asset-empty">No published assets yet. Try again soon.</div>';return;}
-  list.innerHTML=assetCardsMarkup(catalog);
-}
-
-function assetCategorySlug(name){return encodeURIComponent(String(name||'').trim());}
-function renderAssetCategoryCards(hostId, assets){
-  const host=document.getElementById(hostId); if(!host)return;
-  const counts=new Map();
-  dedupeAssets(assets||[]).forEach(a=>counts.set(a.category,(counts.get(a.category)||0)+1));
-  host.innerHTML=ASSET_LIBRARY_CATEGORY_OBJECTS.map(category=>`<a class="asset-category-card" href="assets.html?category=${assetCategorySlug(category.name)}" data-asset-category="${escapeHtml(category.name)}">
-    <div class="asset-category-card-thumb" style="background-image:url('${escapeHtml(category.thumbnail_url)}')"></div>
-    <div class="asset-category-card-body"><span class="eyebrow">ASSET CATEGORY</span><h4>${escapeHtml(category.name)}</h4><p>${escapeHtml(category.description)}</p><strong>${counts.get(category.name)||0} asset${counts.get(category.name)===1?'':'s'} · View pack →</strong></div>
-  </a>`).join('');
-}
-
-function renderAssetCategorySections(hostId, assets, selectedCategory=''){
-  const host=document.getElementById(hostId); if(!host)return;
-  const catalog=dedupeAssets(assets||[]);
-  const sections=ASSET_LIBRARY_CATEGORY_OBJECTS
-    .map(category=>({category:category.name,assets:catalog.filter(asset=>asset.category===category.name)}))
-    .filter(section=>section.assets.length && (!selectedCategory||section.category===selectedCategory));
-  host.innerHTML=sections.length?sections.map(section=>`<section class="service-asset-group" id="asset-category-${escapeHtml(section.category).replace(/[^a-z0-9]+/gi,'-')}"><div class="service-asset-group-head"><div><p class="eyebrow">CATEGORY</p><h4>${escapeHtml(section.category)}</h4><p>${escapeHtml(ASSET_LIBRARY_CATEGORY_META[section.category]||'')}</p></div><strong>${section.assets.length} asset${section.assets.length===1?'':'s'}</strong></div><div class="asset-grid">${assetCardsMarkup(section.assets)}</div></section>`).join(''):'<div class="asset-empty">No published assets are available in this category yet.</div>';
-}
-
-function renderAssetCategorySelect(){
-  const select=document.getElementById('assetCategory'); if(!select)return;
-  const current=select.value;
-  select.innerHTML=ASSET_LIBRARY_CATEGORIES.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('');
-  if(current&&ASSET_LIBRARY_CATEGORIES.includes(current))select.value=current;
-}
-
-async function loadAssetCategories(){
-  if(!db){setAssetCategories(DEFAULT_ASSET_CATEGORIES);renderAssetCategorySelect();return;}
-  const {data,error}=await db.from('asset_categories').select('*').eq('published',true).order('sort_order').order('created_at');
-  if(error){
-    console.warn('Asset categories table unavailable; using default categories.',error);
-    setAssetCategories(DEFAULT_ASSET_CATEGORIES);
-  }else if(data?.length){
-    setAssetCategories(data);
-  }else{
-    setAssetCategories(DEFAULT_ASSET_CATEGORIES);
-  }
-  renderAssetCategorySelect();
-}
-
-async function loadAssetCatalog(){
-  const catalogElement=document.getElementById('assetLibraryGrid');
-  const categoryHost=document.getElementById('assetLibrarySections')||document.getElementById('servicesAssetSections');
-  const categoryCards=document.getElementById('assetCategoryCards');
-  if(!catalogElement&&!categoryHost&&!categoryCards)return;
-  await loadAssetCategories();
-  let assets=[];
-  if(db){
-    const {data,error}=await db.from('asset_library').select('*').eq('published',true).order('created_at',{ascending:false});
-    if(error){console.error('Public Asset Library load failed:',error);}
-    else assets=data||[];
-  }
-  assets=dedupeAssets(assets);
-  window.STAR_VISUALS_ASSET_CATALOG=assets;
-  const params=new URLSearchParams(location.search);
-  const requestedCategory=params.get('category')||'';
-  const validCategory=ASSET_LIBRARY_CATEGORIES.find(name=>name.toLowerCase()===requestedCategory.trim().toLowerCase())||'';
-  if(categoryCards)renderAssetCategoryCards('assetCategoryCards',assets);
-  if(categoryHost)renderAssetCategorySections(categoryHost.id,assets,validCategory);
-  if(catalogElement)renderAssetCards('assetLibraryGrid',validCategory?assets.filter(a=>a.category===validCategory):assets);
-
-  const selection=document.getElementById('assetCategorySelection');
-  if(selection)selection.textContent=validCategory||'All categories';
-  const showAll=document.getElementById('assetShowAll');
-  if(showAll&&!showAll.dataset.wired){
-    showAll.dataset.wired='1';
-    showAll.addEventListener('click',()=>{
-      history.pushState({},'',location.pathname+'#asset-library');
-      if(selection)selection.textContent='All categories';
-      if(categoryHost)renderAssetCategorySections(categoryHost.id,window.STAR_VISUALS_ASSET_CATALOG||[]);
-      if(catalogElement)renderAssetCards('assetLibraryGrid',window.STAR_VISUALS_ASSET_CATALOG||[]);
-      categoryHost?.scrollIntoView({behavior:'smooth',block:'start'});
-    });
-  }
-
-}
-
-async function loadMyAssets(){
-  const myAssetList=document.getElementById('myAssetList');
-  if(!myAssetList)return;
-  if(!db){myAssetList.innerHTML='<div class="asset-empty">Connect Supabase to view your asset access.</div>';return;}
-  const {data:{session}}=await db.auth.getSession();
-  if(!session?.user){myAssetList.innerHTML='<div class="asset-empty">Log in to see downloaded and premium assets.</div>';return;}
-  const {data:accessRows,error:accessError}=await db.from('user_asset_access').select('*').eq('user_id',session.user.id).order('created_at',{ascending:false});
-  if(accessError){myAssetList.innerHTML='<div class="asset-empty">Could not load your assets right now.</div>';return;}
-  const allowedIds=(accessRows||[]).map(row=>row.asset_id);
-  const {data:assetsData}=allowedIds.length?await db.from('asset_library').select('*').in('id',allowedIds).eq('published',true):{data:[]};
-  const accessMap=new Map((accessRows||[]).map(row=>[String(row.asset_id),row]));
-  const assets=(assetsData||[]).map(normalizeAsset).slice(0,4);
-  if(!assets.length){myAssetList.innerHTML='<div class="asset-empty">No assets unlocked yet.</div>';return;}
-  myAssetList.innerHTML=assets.map((asset)=>`<div class="purchased-course"><strong>${escapeHtml(asset.name)}</strong><span>${escapeHtml(accessMap.get(String(asset.id))?.status==='downloaded'?'Downloaded':'Purchased')}</span><button class="asset-button primary" type="button" data-asset-id="${escapeHtml(String(asset.id))}" data-asset-action="download">${accessMap.get(String(asset.id))?.status==='downloaded'?'Download Again':'Download'}</button></div>`).join('');
-}
-
-document.addEventListener('click',async (event)=>{
-  const target=event.target.closest('[data-asset-action]');
-  if(!target)return;
-  const assetId=target.dataset.assetId;
-  const assetAction=target.dataset.assetAction;
-  const asset=findAssetById(assetId);
-  if(!asset)return;
-  if(assetAction==='preview'){if(asset.preview_url){window.open(asset.preview_url,'_blank','noopener');}else toast('Preview is coming soon.');return;}
-  if(assetAction==='download'){await handleAssetDownload(asset);}
-});
-
 const STAR_VISUALS_ASSET_BUCKET='star-assets';
-const STAR_VISUALS_ASSET_FOLDER='asset-pack';
+const STAR_VISUALS_ASSET_FOLDER='asset-pack/files';
 const STAR_VISUALS_THUMBNAIL_FOLDER='asset-pack/thumbnails';
+const STAR_VISUALS_PREVIEW_FOLDER='asset-pack/previews';
+const ASSET_PAGE_SIZE=24;
+let assetLibraryState={assets:[],collections:[],favorites:new Set(),page:1,loading:false,hasMore:false,search:'',category:'',access:'',format:'',software:'',sort:'newest',collection:'',featured:false,trending:false};
 
 function assetStorage(bucket=STAR_VISUALS_ASSET_BUCKET){
   if(!db?.storage)throw new Error('Supabase Storage is not available. Check supabase-config.js.');
@@ -703,209 +546,540 @@ function assetStorage(bucket=STAR_VISUALS_ASSET_BUCKET){
 }
 function assetStorageError(error){
   const message=error?.message||String(error||'Unknown storage error.');
-  if(/bucket.*not found/i.test(message))return `Storage bucket "${STAR_VISUALS_ASSET_BUCKET}" was not found. Run the included supabase-asset-library-separation-fix.sql migration in Supabase SQL Editor.`;
-  if(/row-level security|permission denied|not authorized|unauthorized/i.test(message))return `Storage permission denied. Make sure your signed-in account is an admin and the Asset Library storage policies are installed.`;
+  if(/bucket.*not found/i.test(message))return `Storage bucket "${STAR_VISUALS_ASSET_BUCKET}" was not found. Run supabase-asset-library-v2-secure.sql in Supabase SQL Editor.`;
+  if(/row-level security|permission denied|not authorized|unauthorized/i.test(message))return 'Storage permission denied. Verify the Asset Library RLS policies and administrator access.';
   return message;
 }
-
-async function loadAdminAssets(){
-  const list=document.getElementById('adminAssetList');
-  if(!list||!db)return;
-  const {data,error}=await db.from('asset_library').select('*').order('created_at',{ascending:false});
-  if(error){
-    console.error('Asset library database load failed:',error);
-    const assetDbMessage=error?.message&&/external_download_url.*asset_library.*schema cache|asset_library.*external_download_url.*schema cache/i.test(error.message)
-      ? `The Asset Library table exists, but its external_download_url column is missing from Supabase. Run supabase-asset-library-column-fix.sql in Supabase SQL Editor, then refresh this page.`
-      : error?.message&&/asset_library.*schema cache|relation .*asset_library.*does not exist/i.test(error.message)
-        ? `The Asset Library table is missing from Supabase. Run supabase-asset-library-separation-fix.sql in Supabase SQL Editor, then refresh this page.`
-        : friendlyError(error);
-    list.innerHTML=`<div class="admin-empty">Assets could not be loaded: ${escapeHtml(assetDbMessage)}</div>`;
-    setAssetStatus(assetDbMessage,true);
-    return;
-  }
-  if(!data?.length){list.innerHTML='<div class="admin-empty">No assets yet. Add your first resource above.</div>';return;}
-  list.innerHTML=data.map((asset)=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(asset.published?'Published':'Draft')}</span><h3>${escapeHtml(asset.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-asset-edit="${escapeHtml(asset.id)}">Edit</button><button class="outline-btn" type="button" data-asset-delete="${escapeHtml(asset.id)}">Delete</button></div></div><div class="admin-request-grid"><div><span>Asset Library category</span><strong>${escapeHtml(asset.category||'Cinematic Reel Pack')}</strong></div><div><span>Access</span><strong>${escapeHtml(asset.access_type||'free')}</strong></div><div><span>Download</span><strong>${asset.external_download_url?'External link':asset.file_url?'Storage file':'Not set'}</strong></div></div><div class="admin-brief"><span>DETAILS</span><p>${escapeHtml(asset.description||'No description yet.')}</p></div></article>`).join('');
+function normalizeAsset(asset){
+  const item={...asset};
+  item.id=item.id||String(item.name||'asset').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  item.category=String(item.category||ASSET_LIBRARY_CATEGORIES[0]||'Templates').trim();
+  item.subcategory=String(item.subcategory||'').trim();
+  item.access_type=(item.access_type||'free').toLowerCase()==='premium'?'premium':'free';
+  item.price=Number(item.price||0);
+  item.file_size=item.file_size||'—';
+  item.file_type=item.file_type||'FILE';
+  item.software=item.software||'Any';
+  item.software_compatibility=Array.isArray(item.software_compatibility)?item.software_compatibility:(item.software?String(item.software).split(',').map(v=>v.trim()).filter(Boolean):[]);
+  item.tags=Array.isArray(item.tags)?item.tags:(item.tags?String(item.tags).split(',').map(v=>v.trim()).filter(Boolean):[]);
+  item.thumbnail_url=item.thumbnail_url||'assets/asset-pack/asset-library-cover.svg';
+  item.published=item.published!==false;
+  item.featured=item.featured===true;
+  item.trending=item.trending===true;
+  item.downloads_count=Number(item.downloads_count||0);
+  return item;
 }
+function dedupeAssets(assets){
+  const seen=new Set();
+  return (assets||[]).map(normalizeAsset).filter(item=>{
+    const signature=String(item.id);
+    if(seen.has(signature))return false;seen.add(signature);return true;
+  });
+}
+function formatAssetPrice(asset){return normalizeAsset(asset).access_type==='free'?'FREE':`₹${Number(normalizeAsset(asset).price||0).toLocaleString('en-IN')}`;}
+function assetCategorySlug(name){return encodeURIComponent(String(name||'').trim());}
+function setAssetStatus(message,error=false){
+  const el=document.getElementById('assetStatus');if(el){el.textContent=message;el.classList.toggle('error',Boolean(error));}
+}
+function getStoragePath(value){
+  const raw=String(value||'').trim();
+  if(!raw)return '';
+  if(/^https?:\/\//i.test(raw)){
+    try{
+      const u=new URL(raw);
+      const marker='/storage/v1/object/public/star-assets/';
+      const marker2='/storage/v1/object/sign/star-assets/';
+      const marker3='/storage/v1/object/authenticated/star-assets/';
+      for(const markerValue of [marker,marker2,marker3]){
+        const idx=u.pathname.indexOf(markerValue);
+        if(idx>=0)return decodeURIComponent(u.pathname.slice(idx+markerValue.length));
+      }
+    }catch(_){}
+    return '';
+  }
+  if(raw.startsWith('asset-pack/'))return raw;
+  return '';
+}
+async function resolveAssetMediaUrl(value,expires=900){
+  const raw=String(value||'').trim();
+  if(!raw)return '';
+  if(/^https?:\/\//i.test(raw)){
+    const storagePath=getStoragePath(raw);
+    if(!storagePath)return raw;
+    try{
+      const {data,error}=await assetStorage().createSignedUrl(storagePath,expires);
+      return error?'':data?.signedUrl||'';
+    }catch(_){return '';}
+  }
+  if(raw.startsWith('asset-pack/')){
+    try{
+      const {data,error}=await assetStorage().createSignedUrl(raw,expires);
+      return error?'':data?.signedUrl||'';
+    }catch(_){return '';}
+  }
+  return raw;
+}
+async function resolveAssetPreview(asset){
+  const item=normalizeAsset(asset);
+  const preview=item.preview_url||item.thumbnail_url;
+  return await resolveAssetMediaUrl(preview);
+}
+function assetMimeKind(asset){
+  const type=String(normalizeAsset(asset).file_type||'').toLowerCase();
+  if(/(mp4|mov|m4v|webm|video)/.test(type))return 'video';
+  if(/(mp3|wav|ogg|m4a|audio)/.test(type))return 'audio';
+  if(/(jpg|jpeg|png|webp|gif|image|svg)/.test(type))return 'image';
+  return 'file';
+}
+function assetMatchesFilters(asset){
+  const item=normalizeAsset(asset), state=assetLibraryState;
+  const haystack=[item.name,item.description,item.category,item.subcategory,item.file_type,item.software,...item.software_compatibility,...item.tags].join(' ').toLowerCase();
+  if(state.search&&!haystack.includes(state.search.toLowerCase()))return false;
+  if(state.category&&item.category!==state.category)return false;
+  if(state.access&&item.access_type!==state.access)return false;
+  if(state.format&&String(item.file_type).toLowerCase()!==state.format.toLowerCase())return false;
+  if(state.software&&!(item.software_compatibility||[]).some(s=>String(s).toLowerCase()===state.software.toLowerCase())&&!String(item.software).toLowerCase().includes(state.software.toLowerCase()))return false;
+  if(state.collection&&!(item.collection_ids||[]).includes(state.collection))return false;
+  if(state.featured&&!item.featured)return false;
+  if(state.trending&&!item.trending)return false;
+  return true;
+}
+function sortAssets(assets){
+  const list=[...assets], mode=assetLibraryState.sort;
+  if(mode==='az')return list.sort((a,b)=>a.name.localeCompare(b.name));
+  if(mode==='popular')return list.sort((a,b)=>Number(b.downloads_count||0)-Number(a.downloads_count||0));
+  return list.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+}
+function assetCardsMarkup(assets){
+  return (assets||[]).map(asset=>{
+    const item=normalizeAsset(asset),saved=assetLibraryState.favorites.has(String(item.id));
+    const tags=item.tags?.slice(0,2).map(tag=>`<span>${escapeHtml(tag)}</span>`).join('')||'';
+    return `<article class="asset-card-v2 ${item.access_type==='premium'?'premium':''}" tabindex="0" data-asset-open="${escapeHtml(String(item.id))}">
+      <div class="asset-card-v2-media">
+        <img src="${escapeHtml(item.thumbnail_url||'assets/asset-pack/asset-library-cover.svg')}" alt="${escapeHtml(item.name)} preview" loading="lazy" data-asset-media="${escapeHtml(String(item.id))}">
+        <div class="asset-card-v2-badges"><span class="asset-badge ${item.access_type==='premium'?'premium':''}">${item.access_type==='premium'?'Premium':'Free'}</span>${item.featured?'<span class="asset-badge accent">Featured</span>':''}${item.trending?'<span class="asset-badge">Trending</span>':''}</div>
+        <button class="asset-favorite-v2 ${saved?'is-saved':''}" type="button" data-asset-favorite="${escapeHtml(String(item.id))}" aria-label="${saved?'Remove from favorites':'Save to favorites'}" aria-pressed="${saved?'true':'false'}">♡</button>
+      </div>
+      <div class="asset-card-v2-body">
+        <div class="asset-card-v2-meta"><span>${escapeHtml(item.category)}</span><span>${escapeHtml(item.file_type)}</span></div>
+        <h3>${escapeHtml(item.name)}</h3>
+        <p>${escapeHtml(item.description||'Creator-ready resource for faster production.')}</p>
+        <div class="asset-card-v2-tags">${tags}</div>
+        <div class="asset-card-v2-foot"><strong>${formatAssetPrice(item)}</strong><button class="outline-btn" type="button" data-asset-open="${escapeHtml(String(item.id))}">View</button></div>
+      </div>
+    </article>`;
+  }).join('');
+}
+async function hydrateAssetMedia(container=document){
+  const images=[...container.querySelectorAll('[data-asset-media]')];
+  await Promise.all(images.map(async img=>{
+    const asset=findAssetById(img.dataset.assetMedia);
+    if(!asset)return;
+    const url=await resolveAssetMediaUrl(asset.thumbnail_url);
+    if(url)img.src=url;
+  }));
+}
+function findAssetById(id){return (window.STAR_VISUALS_ASSET_CATALOG||[]).map(normalizeAsset).find(a=>String(a.id)===String(id))||null;}
 
-async function loadAdminAssetCategories(){
-  const list=document.getElementById('adminAssetCategoryList');
-  if(!db||(!list&&!document.getElementById('assetCategory')))return;
+function renderAdminAssetCategorySelect(){
+  const select=document.getElementById('assetCategory');if(!select)return;
+  const current=select.value;
+  select.innerHTML='<option value="">Select category</option>'+ASSET_LIBRARY_CATEGORIES.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  if(current&&ASSET_LIBRARY_CATEGORIES.includes(current))select.value=current;
+}
+async function loadAssetCategories(){
+  if(!db){setAssetCategories(DEFAULT_ASSET_CATEGORIES);renderAdminAssetCategorySelect();return;}
+  const {data,error}=await db.from('asset_categories').select('*').eq('published',true).order('sort_order').order('created_at');
+  if(error||!data?.length){setAssetCategories(DEFAULT_ASSET_CATEGORIES);renderAdminAssetCategorySelect();return;}
+  setAssetCategories(data);renderAdminAssetCategorySelect();
+}
+async function loadAssetCollections(includeAdmin=false){
+  if(!db)return [];
+  const {data,error}=await db.from('asset_collections').select('*').order('sort_order').order('created_at');
+  if(error)return [];
+  const collections=data||[];
+  assetLibraryState.collections=collections;
+  const ids=collections.map(c=>c.id);
+  if(ids.length){
+    const {data:items}=await db.from('asset_collection_items').select('collection_id,asset_id').in('collection_id',ids);
+    const map=new Map(collections.map(c=>[String(c.id),[]]));
+    (items||[]).forEach(row=>map.get(String(row.collection_id))?.push(String(row.asset_id)));
+    collections.forEach(c=>c.asset_ids=map.get(String(c.id))||[]);
+  }
+  return collections;
+}
+async function loadAssetFavorites(){
+  assetLibraryState.favorites=new Set();
+  if(!db)return;
+  const {data:{session}}=await db.auth.getSession();
+  if(!session?.user)return;
+  const {data}=await db.from('asset_favorites').select('asset_id').eq('user_id',session.user.id);
+  (data||[]).forEach(row=>assetLibraryState.favorites.add(String(row.asset_id)));
+}
+async function loadAssetCatalog(){
+  const grid=document.getElementById('assetLibraryGrid');
+  const sections=document.getElementById('assetLibrarySections')||document.getElementById('servicesAssetSections');
+  const categoryCards=document.getElementById('assetCategoryCards');
+  if(!grid&&!sections&&!categoryCards)return;
+  if(assetLibraryState.loading)return;
+  assetLibraryState.loading=true;
   await loadAssetCategories();
-  if(list){
-    list.innerHTML=ASSET_LIBRARY_CATEGORY_OBJECTS.map(category=>{
-      const count=(window.STAR_VISUALS_ASSET_CATALOG||[]).filter(a=>a.category===category.name).length;
-      return `<article class="asset-category-admin-card"><div class="asset-category-card-thumb" style="background-image:url('${escapeHtml(category.thumbnail_url)}')"></div><div><span class="eyebrow">${count} ASSETS</span><h4>${escapeHtml(category.name)}</h4><p>${escapeHtml(category.description)}</p></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-asset-category-edit="${escapeHtml(String(category.id))}">Edit</button>${!DEFAULT_ASSET_CATEGORIES.some(c=>c.name===category.name)?`<button class="outline-btn" type="button" data-asset-category-delete="${escapeHtml(String(category.id))}">Delete</button>`:''}<button class="btn" type="button" data-asset-category-upload="${escapeHtml(category.name)}">Upload asset</button></div></article>`;
-    }).join('');
+  const requestedCategory=new URLSearchParams(location.search).get('category')||'';
+  const matchedCategory=ASSET_LIBRARY_CATEGORIES.find(c=>c.toLowerCase()===requestedCategory.trim().toLowerCase());
+  if(matchedCategory)assetLibraryState.category=matchedCategory;
+  await loadAssetCollections();
+  await loadAssetFavorites();
+  if(db){
+    const {data,error}=await db.from('asset_library').select('*').eq('published',true).order('created_at',{ascending:false});
+    if(error){console.error('Public Asset Library load failed:',error);assetLibraryState.assets=[];}
+    else assetLibraryState.assets=dedupeAssets(data||[]);
+  }else assetLibraryState.assets=[];
+  // Attach collection IDs without creating duplicate asset records.
+  const collectionMap=new Map();
+  assetLibraryState.collections.forEach(c=>(c.asset_ids||[]).forEach(id=>{
+    if(!collectionMap.has(id))collectionMap.set(id,[]);
+    collectionMap.get(id).push(String(c.id));
+  }));
+  assetLibraryState.assets.forEach(a=>a.collection_ids=collectionMap.get(String(a.id))||[]);
+  window.STAR_VISUALS_ASSET_CATALOG=assetLibraryState.assets;
+  assetLibraryState.loading=false;
+  updateAssetFilterOptions();
+  renderAssetLibrary();
+  renderServiceAssetLibrary();
+}
+function renderAssetCategoryCards(){
+  const host=document.getElementById('assetCategoryCards');if(!host)return;
+  const counts=new Map();
+  assetLibraryState.assets.forEach(a=>counts.set(a.category,(counts.get(a.category)||0)+1));
+  host.innerHTML=`<button type="button" class="asset-category-card-v2 active" data-asset-category-filter="">All<span>${assetLibraryState.assets.length}</span></button>`+
+    ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>`<button type="button" class="asset-category-card-v2" data-asset-category-filter="${escapeHtml(c.name)}"><span class="asset-category-card-v2-name">${escapeHtml(c.name)}</span><span>${counts.get(c.name)||0}</span></button>`).join('');
+}
+function renderAssetLibrary(){
+  const categorySelect=document.getElementById('assetCategoryFilter');
+  if(categorySelect)categorySelect.value=assetLibraryState.category||'';
+  const accessSelect=document.getElementById('assetAccessFilter');
+  if(accessSelect)accessSelect.value=assetLibraryState.access||'';
+  const formatSelect=document.getElementById('assetFormatFilter');
+  if(formatSelect)formatSelect.value=assetLibraryState.format||'';
+  const softwareSelect=document.getElementById('assetSoftwareFilter');
+  if(softwareSelect)softwareSelect.value=assetLibraryState.software||'';
+  const sortSelect=document.getElementById('assetSortFilter');
+  if(sortSelect)sortSelect.value=assetLibraryState.sort||'newest';
+  renderAssetCategoryCards();
+  document.querySelectorAll('[data-asset-category-filter]').forEach(btn=>btn.classList.toggle('active',btn.dataset.assetCategoryFilter===assetLibraryState.category));
+  const visible=sortAssets(assetLibraryState.assets.filter(assetMatchesFilters));
+  const grid=document.getElementById('assetLibraryGrid');
+  const resultCount=document.getElementById('assetResultCount');
+  if(resultCount)resultCount.textContent=`${visible.length} asset${visible.length===1?'':'s'} found`;
+  if(grid){
+    const end=assetLibraryState.page*ASSET_PAGE_SIZE;
+    const pageItems=visible.slice(0,end);
+    grid.innerHTML=pageItems.length?assetCardsMarkup(pageItems):'<div class="asset-empty-v2"><strong>No assets found</strong><span>Try another search, category or filter.</span></div>';
+    hydrateAssetMedia(grid);
+    const more=document.getElementById('assetLoadMore');
+    if(more)more.hidden=end>=visible.length;
   }
-  renderAssetCategorySelect();
+  const featured=document.getElementById('assetFeaturedGrid');
+  if(featured){
+    const featuredAssets=assetLibraryState.assets.filter(a=>a.featured).slice(0,6);
+    featured.innerHTML=featuredAssets.length?assetCardsMarkup(featuredAssets):'<div class="asset-empty-v2"><strong>Featured collection is being curated.</strong><span>Check back soon for new releases.</span></div>';
+    hydrateAssetMedia(featured);
+  }
+  const collections=document.getElementById('assetCollectionsGrid');
+  if(collections){
+    collections.innerHTML=assetLibraryState.collections.filter(c=>c.published!==false).map(c=>`<button class="asset-collection-card-v2" type="button" data-asset-collection="${escapeHtml(c.id)}"><img src="${escapeHtml(c.thumbnail_url||'assets/asset-pack/asset-library-cover.svg')}" alt="" loading="lazy" data-collection-media="${escapeHtml(c.id)}"><span class="eyebrow">COLLECTION</span><h3>${escapeHtml(c.name)}</h3><p>${escapeHtml(c.description||'Curated creator assets.')}</p><strong>${(c.asset_ids||[]).length} assets →</strong></button>`).join('')||'<div class="asset-empty-v2"><strong>No collections yet.</strong></div>';
+    collections.querySelectorAll('[data-collection-media]').forEach(async img=>{const c=assetLibraryState.collections.find(x=>String(x.id)===String(img.dataset.collectionMedia));if(c){const url=await resolveAssetMediaUrl(c.thumbnail_url);if(url)img.src=url;}});
+  }
 }
-
-function setAssetCategoryStatus(message,error=false){
-  const el=document.getElementById('assetCategoryStatus');if(el){el.textContent=message;el.classList.toggle('error',Boolean(error));}
+function updateAssetFilterOptions(){
+  const format=document.getElementById('assetFormatFilter'),software=document.getElementById('assetSoftwareFilter'),category=document.getElementById('assetCategoryFilter');
+  if(category)category.innerHTML='<option value="">All categories</option>'+ASSET_LIBRARY_CATEGORIES.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  const formats=[...new Set(assetLibraryState.assets.map(a=>String(a.file_type||'').trim()).filter(Boolean))].sort();
+  if(format)format.innerHTML='<option value="">All formats</option>'+formats.map(f=>`<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
+  const softwares=[...new Set(assetLibraryState.assets.flatMap(a=>a.software_compatibility||[]).concat(assetLibraryState.assets.map(a=>a.software)).map(s=>String(s||'').trim()).filter(Boolean))].sort();
+  if(software)software.innerHTML='<option value="">All software</option>'+softwares.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
 }
-document.getElementById('assetCategoryForm')?.addEventListener('submit',async(event)=>{
-  event.preventDefault(); if(!db){setAssetCategoryStatus('Connect Supabase before managing categories.',true);return;}
-  const id=document.getElementById('assetCategoryEditId')?.value||'';
-  const name=document.getElementById('assetCategoryName')?.value.trim();
-  const description=document.getElementById('assetCategoryDescription')?.value.trim();
-  let thumbnail=document.getElementById('assetCategoryThumbnail')?.value.trim()||'assets/asset-pack/asset-library-cover.svg';
-  const thumbFile=document.getElementById('assetCategoryUploadThumbnail')?.files?.[0];
+function resetAssetLibraryFilters(){
+  assetLibraryState={...assetLibraryState,page:1,search:'',category:'',access:'',format:'',software:'',sort:'newest',collection:'',featured:false,trending:false};
+  {const el=document.getElementById('assetSearch');if(el)el.value='';}
+  document.querySelectorAll('[data-asset-filter]').forEach(el=>el.value=el.dataset.assetFilterDefault||'');
+  renderAssetLibrary();
+}
+function openAssetDetail(assetId){
+  const asset=findAssetById(assetId);if(!asset)return;
+  let modal=document.getElementById('assetDetailModal');
+  if(!modal){
+    modal=document.createElement('div');modal.id='assetDetailModal';modal.className='asset-detail-modal';modal.innerHTML=`<div class="asset-detail-backdrop" data-asset-detail-close></div><section class="asset-detail-panel" role="dialog" aria-modal="true" aria-labelledby="assetDetailTitle"><button class="asset-detail-close" type="button" aria-label="Close asset detail" data-asset-detail-close>×</button><div id="assetDetailContent"></div></section>`;
+    document.body.appendChild(modal);
+  }
+  const saved=assetLibraryState.favorites.has(String(asset.id));
+  const tags=(asset.tags||[]).map(t=>`<span>${escapeHtml(t)}</span>`).join('');
+  const compat=(asset.software_compatibility||[]).length?asset.software_compatibility:[asset.software].filter(Boolean);
+  const kind=assetMimeKind(asset);
+  const content=document.getElementById('assetDetailContent');
+  content.innerHTML=`<div class="asset-detail-preview" id="assetDetailPreview"><div class="asset-preview-loading">Loading preview…</div></div>
+    <div class="asset-detail-copy"><div class="asset-detail-badges"><span class="asset-badge ${asset.access_type==='premium'?'premium':''}">${asset.access_type==='premium'?'Premium':'Free'}</span>${asset.featured?'<span class="asset-badge accent">Featured</span>':''}${asset.trending?'<span class="asset-badge">Trending</span>':''}</div>
+    <p class="eyebrow">${escapeHtml(asset.category)}${asset.subcategory?` / ${escapeHtml(asset.subcategory)}`:''}</p><h2 id="assetDetailTitle">${escapeHtml(asset.name)}</h2><p class="asset-detail-description">${escapeHtml(asset.description||'Creator-ready asset for faster production.')}</p>
+    <div class="asset-detail-specs"><div><span>FORMAT</span><strong>${escapeHtml(asset.file_type)}</strong></div><div><span>SIZE</span><strong>${escapeHtml(asset.file_size)}</strong></div><div><span>SOFTWARE</span><strong>${escapeHtml(compat.join(', ')||'Any')}</strong></div><div><span>ACCESS</span><strong>${formatAssetPrice(asset)}</strong></div></div>
+    <div class="asset-card-v2-tags">${tags}</div><div class="asset-detail-actions"><button class="outline-btn ${saved?'is-saved':''}" type="button" data-asset-favorite="${escapeHtml(String(asset.id))}" aria-pressed="${saved?'true':'false'}">${saved?'♥ Saved':'♡ Save'}</button><button class="btn" type="button" data-asset-download="${escapeHtml(String(asset.id))}">${asset.access_type==='premium'?'Download Premium':'Download'}</button></div><p class="asset-detail-note" id="assetDetailStatus"></p></div>`;
+  modal.classList.add('open');document.body.classList.add('modal-open');
+  const preview=document.getElementById('assetDetailPreview');
+  resolveAssetPreview(asset).then(url=>{
+    if(!url){preview.innerHTML='<div class="asset-preview-empty">Preview unavailable.</div>';return;}
+    if(kind==='video')preview.innerHTML=`<video src="${escapeHtml(url)}" controls playsinline preload="metadata"></video>`;
+    else if(kind==='audio')preview.innerHTML=`<audio src="${escapeHtml(url)}" controls></audio>`;
+    else preview.innerHTML=`<img src="${escapeHtml(url)}" alt="${escapeHtml(asset.name)} preview">`;
+  });
+}
+function closeAssetDetail(){document.getElementById('assetDetailModal')?.classList.remove('open');document.body.classList.remove('modal-open');}
+async function toggleAssetFavorite(assetId){
+  if(!db){openAuth('email-login','assets.html');return;}
+  const {data:{session}}=await db.auth.getSession();
+  if(!session?.user){openAuth('email-login','assets.html');return;}
+  const key=String(assetId),isSaved=assetLibraryState.favorites.has(key);
+  if(isSaved){
+    const {error}=await db.from('asset_favorites').delete().eq('user_id',session.user.id).eq('asset_id',assetId);
+    if(error){toast(friendlyError(error));return;}
+    assetLibraryState.favorites.delete(key);toast('Removed from My Library.');
+  }else{
+    const {error}=await db.from('asset_favorites').insert({user_id:session.user.id,asset_id:assetId});
+    if(error){toast(friendlyError(error));return;}
+    assetLibraryState.favorites.add(key);toast('Saved to My Library.');
+  }
+  renderAssetLibrary();
+  const detailButton=document.querySelector(`#assetDetailModal [data-asset-favorite="${CSS.escape(key)}"]`);
+  if(detailButton){detailButton.textContent=assetLibraryState.favorites.has(key)?'♥ Saved':'♡ Save';detailButton.setAttribute('aria-pressed',String(assetLibraryState.favorites.has(key)));}
+}
+async function handleAssetDownload(asset){
+  const item=normalizeAsset(asset);
+  if(!item.published){toast('This asset is not published.');return;}
+  if(item.access_type==='premium'){
+    if(!db){openAuth('email-login','assets.html');return;}
+    const {data:{session}}=await db.auth.getSession();
+    if(!session?.user){openAuth('email-login','assets.html');toast('Log in to access premium assets.');return;}
+    const {data:access}=await db.from('user_asset_access').select('id').eq('user_id',session.user.id).eq('asset_id',item.id).in('status',['available','purchased','downloaded']).maybeSingle();
+    if(!access){toast('This premium asset is not unlocked for your account.');return;}
+  }
+  const storagePath=getStoragePath(item.file_url);
+  const external=item.external_download_url;
   try{
-    if(!name){setAssetCategoryStatus('Category name is required.',true);return;}
-    if(thumbFile){
-      const uploaded=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,thumbFile,STAR_VISUALS_THUMBNAIL_FOLDER);
-      thumbnail=assetStorage().getPublicUrl(uploaded.path).data.publicUrl;
+    if(db&&item.id&&/^[0-9a-f-]{36}$/i.test(String(item.id))){
+      const {data:recorded,error}=await db.rpc('record_asset_download',{p_asset_id:item.id});
+      if(error||recorded!==true){toast(error?friendlyError(error):'This asset is not available for your account.');return;}
     }
-    const payload={name,description,thumbnail_url:thumbnail,published:true,sort_order:ASSET_LIBRARY_CATEGORY_OBJECTS.length,updated_at:new Date().toISOString()};
-    const result=id?await db.from('asset_categories').update(payload).eq('id',id):await db.from('asset_categories').insert(payload);
-    if(result.error)throw result.error;
-    document.getElementById('assetCategoryForm').reset();document.getElementById('assetCategoryEditId').value='';
-    setAssetCategoryStatus('Category saved. You can now upload assets into it.');
-    await loadAssetCategories();await loadAdminAssetCategories();await loadAssetCatalog();
-  }catch(error){console.error(error);setAssetCategoryStatus(friendlyError(error),true);}
-});
-document.getElementById('assetCategoryReset')?.addEventListener('click',()=>{
-  document.getElementById('assetCategoryForm')?.reset();document.getElementById('assetCategoryEditId').value='';setAssetCategoryStatus('Ready to create a new category.');
-});
-document.getElementById('adminAssetCategoryList')?.addEventListener('click',async(event)=>{
-  const upload=event.target.closest('[data-asset-category-upload]');
-  if(upload){
-    const select=document.getElementById('assetCategory'); if(select){select.value=upload.dataset.assetCategory;document.getElementById('assetName')?.focus();}
-    document.getElementById('assetForm')?.scrollIntoView({behavior:'smooth',block:'start'});setAssetStatus(`Ready to upload an asset into ${upload.dataset.assetCategory}.`);return;
-  }
-  const edit=event.target.closest('[data-asset-category-edit]');
-  if(edit&&db){
-    const {data,error}=await db.from('asset_categories').select('*').eq('id',edit.dataset.assetCategoryEdit).maybeSingle();
-    if(error||!data){setAssetCategoryStatus('This category is one of the built-in categories and can be changed by editing its assets.',true);return;}
-    document.getElementById('assetCategoryEditId').value=data.id;document.getElementById('assetCategoryName').value=data.name||'';document.getElementById('assetCategoryDescription').value=data.description||'';document.getElementById('assetCategoryThumbnail').value=data.thumbnail_url||'';setAssetCategoryStatus('Category loaded for editing.');return;
-  }
-  const del=event.target.closest('[data-asset-category-delete]');
-  if(del&&db&&confirm('Delete this category? Assets inside it will remain but need to be moved to another category.')){
-    const {error}=await db.from('asset_categories').delete().eq('id',del.dataset.assetCategoryDelete);
-    if(error){setAssetCategoryStatus(friendlyError(error),true);return;}
-    await loadAssetCategories();await loadAdminAssetCategories();await loadAssetCatalog();setAssetCategoryStatus('Category deleted.');
-  }
-});
-
-const assetForm=document.getElementById('assetForm');
-const assetEditId=document.getElementById('assetEditId');
+    let url='';
+    if(external&&/^https:\/\//i.test(external))url=external;
+    else if(storagePath){
+      const {data,error}=await assetStorage().createSignedUrl(storagePath,600);
+      if(error)throw error;
+      url=data?.signedUrl||'';
+    }else if(item.file_url&&/^(https?:\/\/|assets\/)/i.test(item.file_url))url=item.file_url;
+    if(!url){toast('This asset is not available yet.');return;}
+    window.open(url,'_blank','noopener,noreferrer');
+    toast(item.access_type==='premium'?'Secure download ready.':'Download ready.');
+  }catch(error){console.error('Asset download failed:',error);toast(friendlyError(error));}
+}
+function wireAssetLibraryUI(){
+  if(window.__starVisualsAssetV2Wired)return;
+  if(!document.getElementById('assetLibraryGrid')&&!document.getElementById('servicesAssetSections'))return;
+  window.__starVisualsAssetV2Wired=true;
+  const search=document.getElementById('assetSearch');
+  search?.addEventListener('input',()=>{clearTimeout(search._assetTimer);search._assetTimer=setTimeout(()=>{assetLibraryState.search=search.value.trim();assetLibraryState.page=1;renderAssetLibrary();},220);});
+  ['assetCategoryFilter','assetAccessFilter','assetFormatFilter','assetSoftwareFilter','assetSortFilter'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('change',e=>{
+      const key=id.replace('asset','').replace('Filter','').toLowerCase();
+      const map={category:'category',access:'access',format:'format',software:'software',sort:'sort'};
+      assetLibraryState[map[key]]=e.target.value;assetLibraryState.page=1;renderAssetLibrary();
+    });
+  });
+  document.getElementById('assetResetFilters')?.addEventListener('click',resetAssetLibraryFilters);
+  document.getElementById('assetLoadMore')?.addEventListener('click',()=>{assetLibraryState.page++;renderAssetLibrary();});
+  document.getElementById('assetCategoryCards')?.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-asset-category-filter]');if(!btn)return;
+    assetLibraryState.category=btn.dataset.assetCategoryFilter||'';assetLibraryState.page=1;
+    document.getElementById('assetCategoryFilter')&&(document.getElementById('assetCategoryFilter').value=assetLibraryState.category);
+    document.querySelectorAll('[data-asset-category-filter]').forEach(x=>x.classList.toggle('active',x===btn));renderAssetLibrary();
+  });
+  document.getElementById('assetCollectionsGrid')?.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-asset-collection]');if(!btn)return;
+    assetLibraryState.collection=btn.dataset.assetCollection;assetLibraryState.page=1;renderAssetLibrary();
+    document.getElementById('assetLibraryGrid')?.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  document.addEventListener('click',async e=>{
+    const favorite=e.target.closest('[data-asset-favorite]');
+    if(favorite){e.stopPropagation();await toggleAssetFavorite(favorite.dataset.assetFavorite);return;}
+    const download=e.target.closest('[data-asset-download]');
+    if(download){e.stopPropagation();const a=findAssetById(download.dataset.assetDownload);if(a)await handleAssetDownload(a);return;}
+    const open=e.target.closest('[data-asset-open]');
+    if(open){openAssetDetail(open.dataset.assetOpen);return;}
+    if(e.target.closest('[data-asset-detail-close]'))closeAssetDetail();
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape')closeAssetDetail();
+    const card=e.target.closest?.('[data-asset-open]');
+    if(card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openAssetDetail(card.dataset.assetOpen);}
+  });
+}
+function renderServiceAssetLibrary(){
+  const host=document.getElementById('servicesAssetSections');if(!host)return;
+  const groups=ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>({category:c.name,assets:assetLibraryState.assets.filter(a=>a.category===c.name).slice(0,4)})).filter(g=>g.assets.length);
+  host.innerHTML=groups.length?groups.map(g=>`<section class="service-asset-group-v2"><div class="service-asset-group-head-v2"><div><p class="eyebrow">ASSET CATEGORY</p><h3>${escapeHtml(g.category)}</h3></div><a class="quiet-link" href="assets.html?category=${assetCategorySlug(g.category)}">Explore all →</a></div><div class="asset-grid">${assetCardsMarkup(g.assets)}</div></section>`).join(''):'<div class="asset-empty-v2"><strong>Asset Library is ready for new releases.</strong><span>Admin uploads will appear here automatically.</span></div>';
+  hydrateAssetMedia(host);
+}
+async function loadMyAssets(){
+  const host=document.getElementById('myAssetList');if(!host)return;
+  if(!db){host.innerHTML='<div class="asset-empty-v2">Connect your account to view My Library.</div>';return;}
+  const {data:{session}}=await db.auth.getSession();
+  if(!session?.user){host.innerHTML='<div class="asset-empty-v2"><strong>Your saved assets live here.</strong><span>Log in to view favorites and unlocked downloads.</span></div>';return;}
+  const {data:favs}=await db.from('asset_favorites').select('asset_id,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(12);
+  const ids=(favs||[]).map(r=>r.asset_id);
+  if(!ids.length){host.innerHTML='<div class="asset-empty-v2"><strong>No saved assets yet.</strong><span>Tap ♡ on any asset to build your library.</span></div>';return;}
+  const {data:assets}=await db.from('asset_library').select('*').in('id',ids).eq('published',true);
+  host.innerHTML=assetCardsMarkup((assets||[]).map(normalizeAsset));hydrateAssetMedia(host);
+}
 async function uploadAdminFile(bucket,file,folder){
-  if(!db||!file)return null;
-  const safe=file.name.toLowerCase().replace(/[^a-z0-9._-]+/g,'-');
-  const path=`${folder}/${Date.now()}-${safe}`;
-  const storage=assetStorage(bucket);
-  const {data,error}=await storage.upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+  if(!db||!file)throw new Error('Supabase Storage is not available.');
+  const safe=file.name.toLowerCase().replace(/[^a-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'asset-file';
+  const path=`${folder}/${crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`}-${safe}`;
+  const allowedExt=/\.(zip|7z|rar|cube|prfpset|mogrt|aep|prproj|wav|mp3|ogg|m4a|mp4|mov|m4v|webm|png|jpg|jpeg|webp|gif|psd|ai|svg|otf|ttf|woff|woff2)$/i;
+  const blocked=/\.(exe|dll|bat|cmd|com|msi|scr|ps1|sh|bash|php|jsp|asp|aspx|cgi|html?)$/i;
+  if(blocked.test(file.name)||!allowedExt.test(file.name))throw new Error('Unsupported asset file type. Upload a supported creative format.');
+  if(file.size>524288000)throw new Error('Asset file exceeds the 500 MB limit.');
+  const {data,error}=await assetStorage(bucket).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||'application/octet-stream'});
   if(error)throw new Error(assetStorageError(error));
-  return {path:data.path};
+  return {path:data.path,size:file.size,type:file.type||'application/octet-stream'};
 }
-assetForm?.addEventListener('submit',async(event)=>{
-  event.preventDefault();
-  if(!db){setAssetStatus('Connect Supabase before managing assets.',true);return;}
-  const file=document.getElementById('assetUploadFile')?.files?.[0]||null;
-  const thumbnailFile=document.getElementById('assetUploadThumbnail')?.files?.[0]||null;
-  try{
-    setAssetStatus(file||thumbnailFile?'Uploading asset files…':'Saving asset…');
-    let fileUrl=String(document.getElementById('assetFileUrl')?.value||'').trim();
-    let thumbnailUrl=String(document.getElementById('assetThumbnail')?.value||'').trim();
-    let fileSize=String(document.getElementById('assetFileSize')?.value||'').trim();
-    let fileType=String(document.getElementById('assetFileType')?.value||'').trim();
-    if(file){
-      const uploaded=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,file,STAR_VISUALS_ASSET_FOLDER);
-      fileUrl=assetStorage().getPublicUrl(uploaded.path).data.publicUrl;
-      fileSize=fileSize||`${(file.size/1024/1024).toFixed(1)} MB`;
-      fileType=fileType||file.name.split('.').pop()?.toUpperCase()||'FILE';
-    }
-    if(thumbnailFile){
-      const uploadedThumb=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,thumbnailFile,STAR_VISUALS_THUMBNAIL_FOLDER);
-      thumbnailUrl=assetStorage().getPublicUrl(uploadedThumb.path).data.publicUrl;
-    }
-    const externalDownloadUrl=String(document.getElementById('assetExternalDownload')?.value||'').trim();
-    const payload={
-      name:String(document.getElementById('assetName')?.value||'').trim(),
-      description:String(document.getElementById('assetDescription')?.value||'').trim(),
-      category:String(document.getElementById('assetCategory')?.value||'Cinematic Reel Pack').trim(),
-      software:String(document.getElementById('assetSoftware')?.value||'').trim(),
-      file_type:fileType||'FILE',
-      file_size:fileSize||'—',
-      thumbnail_url:thumbnailUrl||'assets/asset-pack/asset-library-cover.svg',
-      preview_url:String(document.getElementById('assetPreview')?.value||'').trim(),
-      file_url:fileUrl,
-      external_download_url:externalDownloadUrl||null,
-      access_type:String(document.getElementById('assetAccessType')?.value||'free').trim(),
-      price:Number(document.getElementById('assetPrice')?.value||0),
-      published:String(document.getElementById('assetPublished')?.value||'true')==='true',
-      updated_at:new Date().toISOString()
-    };
-    if(!ASSET_LIBRARY_CATEGORIES.includes(payload.category)){setAssetStatus('Choose a valid Asset Library category.',true);return;}
-    if(!payload.name||(!payload.file_url&&!payload.external_download_url)){setAssetStatus('Asset name and either an uploaded/storage file, File URL, or External Download Link are required.',true);return;}
-    let result;
-    const savedAssetId=assetEditId?.value||'';
-    if(savedAssetId){
-      result=await db.from('asset_library').update(payload).eq('id',savedAssetId).select('id').single();
-    }else{
-      result=await db.from('asset_library').insert(payload).select('id').single();
-    }
-    if(result.error)throw result.error;
-    if(!result.data?.id&&!savedAssetId)throw new Error('Asset was saved but its database ID could not be returned.');
-    assetForm.reset();
-    if(assetEditId)assetEditId.value='';
-    document.getElementById('assetCategory').value='Cinematic Reel Pack';
-    document.getElementById('assetThumbnail').value='assets/asset-pack/asset-library-cover.svg';
-    setAssetStatus(payload.published?'Asset saved and published.':'Asset saved as draft.');
-    await loadAdminAssets();
-    await loadAssetCatalog();
-  }catch(error){
-    console.error('Asset save failed:',error);
-    const message=error?.message||friendlyError(error);
-    if(/external_download_url.*asset_library.*schema cache|asset_library.*external_download_url.*schema cache/i.test(message)){
-      setAssetStatus('The Asset Library table exists, but external_download_url is missing. Run supabase-asset-library-column-fix.sql in Supabase SQL Editor, then refresh this page.',true);
-    }else{
-      setAssetStatus(message,true);
-    }
+function adminAssetStoragePath(accessType,file){return `${STAR_VISUALS_ASSET_FOLDER}/${accessType==='premium'?'premium':'free'}`;}
+function parseAdminTags(value){return String(value||'').split(',').map(v=>v.trim()).filter(Boolean).slice(0,30);}
+async function loadAdminAssetCollections(){
+  const select=document.getElementById('assetCollection');if(!select||!db)return;
+  const {data,error}=await db.from('asset_collections').select('*').order('sort_order').order('created_at');
+  if(error){select.innerHTML='<option value="">No collections available</option>';return;}
+  select.innerHTML='<option value="">No collection</option>'+(data||[]).map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+}
+async function loadAdminAssets(){
+  const list=document.getElementById('adminAssetList');if(!list||!db)return;
+  const {data,error}=await db.from('asset_library').select('*').order('created_at',{ascending:false});
+  if(error){list.innerHTML=`<div class="admin-empty">Assets could not be loaded: ${escapeHtml(friendlyError(error))}</div>`;return;}
+  list.innerHTML=(data||[]).map(asset=>`<article class="admin-request asset-admin-row-v2"><div class="admin-request-head"><div><span class="admin-index">${asset.published?'Published':'Draft'} · ${asset.access_type==='premium'?'Premium':'Free'}</span><h3>${escapeHtml(asset.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-asset-edit="${escapeHtml(asset.id)}">Edit</button><button class="outline-btn" type="button" data-asset-delete="${escapeHtml(asset.id)}">Delete</button></div></div><div class="admin-request-grid"><div><span>CATEGORY</span><strong>${escapeHtml(asset.category||'—')}</strong></div><div><span>FORMAT</span><strong>${escapeHtml(asset.file_type||'—')}</strong></div><div><span>DOWNLOADS</span><strong>${Number(asset.downloads_count||0)}</strong></div><div><span>FLAGS</span><strong>${[asset.featured&&'Featured',asset.trending&&'Trending'].filter(Boolean).join(' · ')||'—'}</strong></div></div></article>`).join('')||'<div class="admin-empty">No assets have been uploaded yet.</div>';
+}
+async function deleteAssetAndOwnedFiles(assetId){
+  const {data:asset,error}=await db.from('asset_library').select('*').eq('id',assetId).maybeSingle();
+  if(error||!asset)throw error||new Error('Asset not found.');
+  const paths=[asset.file_url,asset.thumbnail_url,asset.preview_url].map(getStoragePath).filter(Boolean);
+  const refs=[];
+  if(paths.length){
+    const {data:others}=await db.from('asset_library').select('file_url,thumbnail_url,preview_url').neq('id',assetId);
+    (others||[]).forEach(o=>refs.push(getStoragePath(o.file_url),getStoragePath(o.thumbnail_url),getStoragePath(o.preview_url)));
   }
-});
-
-document.getElementById('assetResetForm')?.addEventListener('click',()=>{
-  assetForm?.reset();
-  if(assetEditId)assetEditId.value='';
-  const category=document.getElementById('assetCategory'); if(category)category.value='Cinematic Reel Pack';
-  const thumb=document.getElementById('assetThumbnail'); if(thumb)thumb.value='assets/asset-pack/asset-library-cover.svg';
-  setAssetStatus('Ready to add a new Asset Library resource.');
-});
-
-document.getElementById('adminAssetList')?.addEventListener('click',async(event)=>{
-  const editButton=event.target.closest('[data-asset-edit]');
-  if(editButton&&db){
-    const {data,error}=await db.from('asset_library').select('*').eq('id',editButton.dataset.assetEdit).maybeSingle();
-    if(error||!data){setAssetStatus(friendlyError(error||'Asset not found.'),true);return;}
-    document.getElementById('assetEditId').value=data.id;
-    document.getElementById('assetName').value=data.name||'';
-    document.getElementById('assetDescription').value=data.description||'';
-    document.getElementById('assetCategory').value=ASSET_LIBRARY_CATEGORIES.includes(data.category)?data.category:'Cinematic Reel Pack';
-    document.getElementById('assetSoftware').value=data.software||'';
-    document.getElementById('assetFileType').value=data.file_type||'ZIP';
-    document.getElementById('assetFileSize').value=data.file_size||'';
-    document.getElementById('assetAccessType').value=data.access_type||'free';
-    document.getElementById('assetPrice').value=Number(data.price||0);
-    document.getElementById('assetThumbnail').value=data.thumbnail_url||'';
-    document.getElementById('assetPreview').value=data.preview_url||'';
-    document.getElementById('assetFileUrl').value=data.file_url||'';
-    document.getElementById('assetExternalDownload').value=data.external_download_url||'';
-    document.getElementById('assetPublished').value=data.published?'true':'false';
-    setAssetStatus('Asset loaded for editing. Editing Service data is not modified.');
-    return;
-  }
-  const deleteButton=event.target.closest('[data-asset-delete]');
-  if(deleteButton&&db){
-    const assetId=deleteButton.dataset.assetDelete;
-    const {error}=await db.from('asset_library').delete().eq('id',assetId);
-    if(error){setAssetStatus(friendlyError(error),true);return;}
-    setAssetStatus('Asset deleted from the Asset Library.');
-    await loadAdminAssets();
-    await loadAssetCatalog();
-  }
-});
-
+  const unique=paths.filter(p=>p&&!refs.includes(p));
+  const {error:delError}=await db.from('asset_library').delete().eq('id',assetId);
+  if(delError)throw delError;
+  if(unique.length){const {error:storageError}=await assetStorage().remove(unique);if(storageError)console.warn('Some owned asset files could not be removed:',storageError);}
+}
+function setupAdminAssetLibrary(){
+  if(window.__starVisualsAdminAssetV2)return;
+  const form=document.getElementById('assetForm');if(!form)return;
+  window.__starVisualsAdminAssetV2=true;
+  loadAdminAssetCollections();
+  document.getElementById('assetCollectionRefresh')?.addEventListener('click',loadAdminAssetCollections);
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();if(!db){setAssetStatus('Connect Supabase before managing assets.',true);return;}
+    const id=document.getElementById('assetEditId')?.value||'';
+    const file=document.getElementById('assetUploadFile')?.files?.[0]||null;
+    const thumb=document.getElementById('assetUploadThumbnail')?.files?.[0]||null;
+    const preview=document.getElementById('assetUploadPreview')?.files?.[0]||null;
+    const access=document.getElementById('assetAccessType')?.value==='premium'?'premium':'free';
+    let uploadedPaths=[];
+    try{
+      setAssetStatus(file||thumb||preview?'Validating and uploading files…':'Saving asset…');
+      const existing=id?(await db.from('asset_library').select('*').eq('id',id).maybeSingle()).data:null;
+      let fileUrl=String(document.getElementById('assetFileUrl')?.value||'').trim();
+      let thumbnailUrl=String(document.getElementById('assetThumbnail')?.value||'').trim()||'assets/asset-pack/asset-library-cover.svg';
+      let previewUrl=String(document.getElementById('assetPreview')?.value||'').trim();
+      if(file){const u=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,file,adminAssetStoragePath(access,file));fileUrl=u.path;uploadedPaths.push(u.path);}
+      if(thumb){const u=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,thumb,STAR_VISUALS_THUMBNAIL_FOLDER);thumbnailUrl=u.path;uploadedPaths.push(u.path);}
+      if(preview){const u=await uploadAdminFile(STAR_VISUALS_ASSET_BUCKET,preview,STAR_VISUALS_PREVIEW_FOLDER);previewUrl=u.path;uploadedPaths.push(u.path);}
+      const software=String(document.getElementById('assetSoftware')?.value||'').trim();
+      const compatibility=String(document.getElementById('assetCompatibility')?.value||software).split(',').map(v=>v.trim()).filter(Boolean);
+      const payload={
+        name:String(document.getElementById('assetName')?.value||'').trim(),
+        description:String(document.getElementById('assetDescription')?.value||'').trim(),
+        category:String(document.getElementById('assetCategory')?.value||'').trim(),
+        subcategory:String(document.getElementById('assetSubcategory')?.value||'').trim()||null,
+        tags:parseAdminTags(document.getElementById('assetTags')?.value),
+        software,
+        software_compatibility:compatibility,
+        file_type:String(document.getElementById('assetFileType')?.value||file?.name.split('.').pop()?.toUpperCase()||'FILE').trim(),
+        file_size:String(document.getElementById('assetFileSize')?.value||file?`${(file.size/1024/1024).toFixed(1)} MB`:'—').trim(),
+        thumbnail_url:thumbnailUrl,
+        preview_url:previewUrl||null,
+        file_url:fileUrl||null,
+        external_download_url:String(document.getElementById('assetExternalDownload')?.value||'').trim()||null,
+        access_type:access,
+        price:Number(document.getElementById('assetPrice')?.value||0),
+        published:document.getElementById('assetPublished')?.value==='true',
+        featured:document.getElementById('assetFeatured')?.checked===true,
+        trending:document.getElementById('assetTrending')?.checked===true,
+        updated_at:new Date().toISOString()
+      };
+      if(!payload.name||!payload.category){throw new Error('Asset name and category are required.');}
+      if(!payload.file_url&&!payload.external_download_url){throw new Error('Add an asset file or a trusted external download link.');}
+      if(payload.access_type==='premium'&&payload.external_download_url){throw new Error('Premium assets must use private Supabase Storage. Do not attach a public external download URL.');}
+      if(payload.access_type==='premium'&&payload.file_url&&!getStoragePath(payload.file_url)){throw new Error('Premium assets must use a private Supabase Storage file path.');}
+      if(!ASSET_LIBRARY_CATEGORIES.includes(payload.category))throw new Error('Choose a valid Asset Library category.');
+      const result=id?await db.from('asset_library').update(payload).eq('id',id).select('id').single():await db.from('asset_library').insert(payload).select('id').single();
+      if(result.error)throw result.error;
+      const assetId=result.data?.id||id;
+      const collectionId=document.getElementById('assetCollection')?.value||'';
+      if(assetId&&collectionId){
+        await db.from('asset_collection_items').upsert({collection_id:collectionId,asset_id:assetId,sort_order:0},{onConflict:'collection_id,asset_id'});
+      }
+      form.reset();document.getElementById('assetEditId').value='';
+      setAssetStatus(payload.published?'Asset saved and published.':'Asset saved as draft.');
+      await loadAdminAssets();await loadAssetCatalog();updateAssetFilterOptions();
+    }catch(error){
+      console.error('Asset save failed:',error);
+      if(uploadedPaths.length){const {error:cleanupError}=await assetStorage().remove(uploadedPaths);if(cleanupError)console.warn('Upload cleanup failed:',cleanupError);}
+      setAssetStatus(friendlyError(error),true);
+    }
+  });
+  document.getElementById('assetResetForm')?.addEventListener('click',()=>{form.reset();document.getElementById('assetEditId').value='';setAssetStatus('Ready to add a new Asset Library resource.');});
+  document.getElementById('adminAssetList')?.addEventListener('click',async e=>{
+    const edit=e.target.closest('[data-asset-edit]');
+    if(edit){
+      const {data,error}=await db.from('asset_library').select('*').eq('id',edit.dataset.assetEdit).maybeSingle();
+      if(error||!data){setAssetStatus(friendlyError(error||'Asset not found.'),true);return;}
+      document.getElementById('assetEditId').value=data.id;
+      document.getElementById('assetName').value=data.name||'';
+      document.getElementById('assetDescription').value=data.description||'';
+      document.getElementById('assetCategory').value=data.category||'';
+      document.getElementById('assetSubcategory').value=data.subcategory||'';
+      document.getElementById('assetTags').value=(data.tags||[]).join(', ');
+      document.getElementById('assetSoftware').value=data.software||'';
+      document.getElementById('assetCompatibility').value=(data.software_compatibility||[]).join(', ');
+      document.getElementById('assetFileType').value=data.file_type||'FILE';
+      document.getElementById('assetFileSize').value=data.file_size||'';
+      document.getElementById('assetAccessType').value=data.access_type||'free';
+      document.getElementById('assetPrice').value=Number(data.price||0);
+      document.getElementById('assetThumbnail').value=data.thumbnail_url||'';
+      document.getElementById('assetPreview').value=data.preview_url||'';
+      document.getElementById('assetFileUrl').value=data.file_url||'';
+      document.getElementById('assetExternalDownload').value=data.external_download_url||'';
+      document.getElementById('assetPublished').value=data.published?'true':'false';
+      document.getElementById('assetFeatured').checked=data.featured===true;
+      document.getElementById('assetTrending').checked=data.trending===true;
+      setAssetStatus('Asset loaded for editing. Uploading a replacement file will update its storage path.');
+      document.getElementById('assetForm')?.scrollIntoView({behavior:'smooth',block:'start'});return;
+    }
+    const del=e.target.closest('[data-asset-delete]');
+    if(del){
+      if(!confirm('Delete this asset? The database record will be removed and unreferenced storage files owned by it will also be removed.'))return;
+      try{await deleteAssetAndOwnedFiles(del.dataset.assetDelete);setAssetStatus('Asset deleted safely.');await loadAdminAssets();await loadAssetCatalog();}
+      catch(error){setAssetStatus(friendlyError(error),true);}
+    }
+  });
+}
 
 /* ============================================================
    ADMIN STUDIO — services, courses, lessons, storage
@@ -1040,6 +1214,109 @@ async function saveLessonForm(event){
   }catch(error){console.error('Lesson upload failed:',error);setAdminFeatureStatus('lessonStatus',friendlyError(error),true);}
 }
 
+
+async function loadAdminAssetStats(){
+  const host=document.getElementById('assetAdminStats');if(!host||!db)return;
+  const {data:assets}=await db.from('asset_library').select('id,access_type,downloads_count');
+  const {data:collections}=await db.from('asset_collections').select('id');
+  const rows=assets||[];
+  const total=rows.length,free=rows.filter(a=>a.access_type==='free').length,premium=rows.filter(a=>a.access_type==='premium').length;
+  const downloads=rows.reduce((sum,a)=>sum+Number(a.downloads_count||0),0);
+  const values=[total,free,premium,(collections||[]).length,downloads];
+  host.querySelectorAll('div strong').forEach((el,i)=>el.textContent=Number(values[i]||0).toLocaleString('en-IN'));
+}
+async function loadAdminAssetCollectionsList(){
+  const list=document.getElementById('adminAssetCollectionList');if(!list||!db)return;
+  const {data,error}=await db.from('asset_collections').select('*').order('sort_order').order('created_at');
+  if(error){list.innerHTML=`<div class="admin-empty">${escapeHtml(friendlyError(error))}</div>`;return;}
+  list.innerHTML=(data||[]).map(c=>`<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${c.published?'Published':'Draft'}</span><h3>${escapeHtml(c.name)}</h3></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-collection-manage="${escapeHtml(c.id)}">Manage Assets</button><button class="outline-btn" type="button" data-collection-edit="${escapeHtml(c.id)}">Edit</button><button class="outline-btn" type="button" data-collection-delete="${escapeHtml(c.id)}">Delete</button></div></div><div class="admin-request-grid"><div><span>ORDER</span><strong>${Number(c.sort_order||0)}</strong></div><div><span>DESCRIPTION</span><strong>${escapeHtml(c.description||'—')}</strong></div></div></article>`).join('')||'<div class="admin-empty">No collections yet.</div>';
+}
+async function loadAdminAssetCategoriesList(){
+  const list=document.getElementById('adminAssetCategoryList');if(!list||!db)return;
+  const {data,error}=await db.from('asset_categories').select('*').order('sort_order').order('created_at');
+  if(error){list.innerHTML=`<div class="admin-empty">${escapeHtml(friendlyError(error))}</div>`;return;}
+  const {data:assetRows}=await db.from('asset_library').select('category');
+  const assets=assetRows||[];
+  list.innerHTML=(data||[]).map(c=>{
+    const count=assets.filter(a=>a.category===c.name).length;
+    return `<article class="asset-category-admin-card"><div class="asset-category-card-thumb" style="background-image:url('${escapeHtml(c.thumbnail_url||'assets/asset-pack/asset-library-cover.svg')}')"></div><div><span class="eyebrow">${count} ASSETS · ${c.published?'LIVE':'DRAFT'}</span><h4>${escapeHtml(c.name)}</h4><p>${escapeHtml(c.description||'')}</p></div><div class="asset-admin-actions compact"><button class="outline-btn" type="button" data-category-edit="${escapeHtml(c.id)}">Edit</button><button class="outline-btn" type="button" data-category-delete="${escapeHtml(c.id)}">Delete</button></div></article>`;
+  }).join('')||'<div class="admin-empty">No categories yet.</div>';
+}
+
+async function openAdminCollectionManager(collectionId){
+  if(!db)return;
+  const {data:collection,error}=await db.from('asset_collections').select('*').eq('id',collectionId).maybeSingle();
+  if(error||!collection){setAdminFeatureStatus('assetCollectionStatus',friendlyError(error||'Collection not found.'),true);return;}
+  const {data:items}=await db.from('asset_collection_items').select('asset_id,sort_order').eq('collection_id',collectionId).order('sort_order');
+  const selected=new Map((items||[]).map(i=>[String(i.asset_id),Number(i.sort_order||0)]));
+  let modal=document.getElementById('adminCollectionManager');
+  if(!modal){
+    modal=document.createElement('div');modal.id='adminCollectionManager';modal.className='asset-detail-modal';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML=`<div class="asset-detail-backdrop" data-admin-collection-close></div><section class="asset-detail-panel admin-collection-manager-v2" role="dialog" aria-modal="true"><button class="asset-detail-close" type="button" data-admin-collection-close>×</button><div class="asset-detail-copy"><p class="eyebrow">COLLECTION</p><h2>${escapeHtml(collection.name)}</h2><p class="asset-detail-description">Select assets and set their order. Saving replaces this collection's asset membership only; the assets themselves are not deleted.</p><div class="collection-manager-list">${assetLibraryState.assets.map((asset,i)=>`<label class="collection-manager-item"><input type="checkbox" data-collection-asset="${escapeHtml(asset.id)}" ${selected.has(String(asset.id))?'checked':''}><span><strong>${escapeHtml(asset.name)}</strong><small>${escapeHtml(asset.category)}</small></span><input class="collection-order-input" type="number" min="0" value="${selected.get(String(asset.id))??i}" data-collection-order="${escapeHtml(asset.id)}" aria-label="Order for ${escapeHtml(asset.name)}"></label>`).join('')||'<div class="asset-empty-v2">No assets available.</div>'}</div><div class="asset-detail-actions"><button class="outline-btn" type="button" data-admin-collection-close>Cancel</button><button class="btn" type="button" id="saveCollectionAssets">Save collection assets</button></div><p class="asset-detail-note" id="collectionManagerStatus"></p></div></section>`;
+  modal.classList.add('open');document.body.classList.add('modal-open');
+  modal.querySelectorAll('[data-admin-collection-close]').forEach(b=>b.addEventListener('click',()=>{modal.classList.remove('open');document.body.classList.remove('modal-open');}));
+  modal.querySelector('#saveCollectionAssets')?.addEventListener('click',async()=>{
+    const rows=[...modal.querySelectorAll('[data-collection-asset]:checked')].map(input=>({collection_id:collectionId,asset_id:input.dataset.collectionAsset,sort_order:Number(modal.querySelector(`[data-collection-order="${CSS.escape(input.dataset.collectionAsset)}"]`)?.value||0)}));
+    const status=modal.querySelector('#collectionManagerStatus');
+    status.textContent='Saving…';
+    const {error:delError}=await db.from('asset_collection_items').delete().eq('collection_id',collectionId);
+    if(delError){status.textContent=friendlyError(delError);return;}
+    if(rows.length){const {error:insertError}=await db.from('asset_collection_items').insert(rows);if(insertError){status.textContent=friendlyError(insertError);return;}}
+    status.textContent='Collection updated.';
+    await loadAssetCollections();renderAssetLibrary();await loadAdminAssetCollectionsList();
+    setTimeout(()=>{modal.classList.remove('open');document.body.classList.remove('modal-open');},350);
+  });
+}
+function setupAdminAssetTaxonomy(){
+  if(window.__starVisualsAdminAssetTaxonomy)return;
+  const collectionForm=document.getElementById('assetCollectionForm'),categoryForm=document.getElementById('assetCategoryForm');
+  if(!collectionForm&&!categoryForm)return;
+  window.__starVisualsAdminAssetTaxonomy=true;
+  loadAdminAssetCollectionsList();loadAdminAssetCategoriesList();
+  collectionForm?.addEventListener('submit',async e=>{
+    e.preventDefault();const id=document.getElementById('assetCollectionEditId').value||'';
+    const payload={name:document.getElementById('assetCollectionName').value.trim(),description:document.getElementById('assetCollectionDescription').value.trim(),thumbnail_url:document.getElementById('assetCollectionThumbnail').value.trim()||'assets/asset-pack/asset-library-cover.svg',sort_order:Number(document.getElementById('assetCollectionSort').value||0),published:document.getElementById('assetCollectionPublished').value==='true',updated_at:new Date().toISOString()};
+    if(!payload.name){setAdminFeatureStatus('assetCollectionStatus','Collection name is required.',true);return;}
+    const result=id?await db.from('asset_collections').update(payload).eq('id',id):await db.from('asset_collections').insert(payload);
+    if(result.error){setAdminFeatureStatus('assetCollectionStatus',friendlyError(result.error),true);return;}
+    collectionForm.reset();document.getElementById('assetCollectionEditId').value='';
+    setAdminFeatureStatus('assetCollectionStatus','Collection saved.');await loadAdminAssetCollectionsList();await loadAdminAssetCollections();loadAdminAssetStats();
+  });
+  document.getElementById('assetCollectionReset')?.addEventListener('click',()=>{collectionForm.reset();document.getElementById('assetCollectionEditId').value='';});
+  document.getElementById('adminAssetCollectionList')?.addEventListener('click',async e=>{
+    const manage=e.target.closest('[data-collection-manage]');
+    const edit=e.target.closest('[data-collection-edit]'),del=e.target.closest('[data-collection-delete]');
+    if(manage){await openAdminCollectionManager(manage.dataset.collectionManage);return;}
+    if(edit){const {data}=await db.from('asset_collections').select('*').eq('id',edit.dataset.collectionEdit).maybeSingle();if(data){document.getElementById('assetCollectionEditId').value=data.id;document.getElementById('assetCollectionName').value=data.name||'';document.getElementById('assetCollectionDescription').value=data.description||'';document.getElementById('assetCollectionThumbnail').value=data.thumbnail_url||'';document.getElementById('assetCollectionSort').value=Number(data.sort_order||0);document.getElementById('assetCollectionPublished').value=String(data.published);}}
+    if(del){if(!confirm('Delete this collection? Assets will remain in the library.'))return;const {error}=await db.from('asset_collections').delete().eq('id',del.dataset.collectionDelete);if(error){setAdminFeatureStatus('assetCollectionStatus',friendlyError(error),true);return;}await loadAdminAssetCollectionsList();await loadAdminAssetCollections();loadAdminAssetStats();}
+  });
+  categoryForm?.addEventListener('submit',async e=>{
+    e.preventDefault();const id=document.getElementById('assetCategoryEditId').value||'';
+    const payload={name:document.getElementById('assetCategoryName').value.trim(),description:document.getElementById('assetCategoryDescription').value.trim(),thumbnail_url:document.getElementById('assetCategoryThumbnail').value.trim()||'assets/asset-pack/asset-library-cover.svg',sort_order:Number(document.getElementById('assetCategorySort').value||0),published:document.getElementById('assetCategoryPublished').value==='true',updated_at:new Date().toISOString()};
+    if(!payload.name){setAdminFeatureStatus('assetCategoryStatus','Category name is required.',true);return;}
+    const result=id?await db.from('asset_categories').update(payload).eq('id',id):await db.from('asset_categories').insert(payload);
+    if(result.error){setAdminFeatureStatus('assetCategoryStatus',friendlyError(result.error),true);return;}
+    categoryForm.reset();document.getElementById('assetCategoryEditId').value='';
+    setAdminFeatureStatus('assetCategoryStatus','Category saved.');await loadAssetCategories();await loadAssetCatalog();await loadAdminAssetCategoriesList();loadAdminAssetStats();
+  });
+  document.getElementById('assetCategoryReset')?.addEventListener('click',()=>{categoryForm.reset();document.getElementById('assetCategoryEditId').value='';});
+  document.getElementById('adminAssetCategoryList')?.addEventListener('click',async e=>{
+    const edit=e.target.closest('[data-category-edit]'),del=e.target.closest('[data-category-delete]');
+    if(edit){const {data}=await db.from('asset_categories').select('*').eq('id',edit.dataset.categoryEdit).maybeSingle();if(data){document.getElementById('assetCategoryEditId').value=data.id;document.getElementById('assetCategoryName').value=data.name||'';document.getElementById('assetCategoryDescription').value=data.description||'';document.getElementById('assetCategoryThumbnail').value=data.thumbnail_url||'';document.getElementById('assetCategorySort').value=Number(data.sort_order||0);document.getElementById('assetCategoryPublished').value=String(data.published);}}
+    if(del){
+      const {data:categoryRow}=await db.from('asset_categories').select('name').eq('id',del.dataset.categoryDelete).maybeSingle();
+      const {data:categoryAssets}=await db.from('asset_library').select('id').eq('category',categoryRow?.name||'');
+      const count=(categoryAssets||[]).length;
+      if(count){setAdminFeatureStatus('assetCategoryStatus',`Move ${count} asset${count===1?'':'s'} to another category before deleting this category.`,true);return;}
+      if(!confirm('Delete this category?'))return;
+      const {error}=await db.from('asset_categories').delete().eq('id',del.dataset.categoryDelete);
+      if(error){setAdminFeatureStatus('assetCategoryStatus',friendlyError(error),true);return;}
+      await loadAssetCategories();await loadAssetCatalog();await loadAdminAssetCategoriesList();loadAdminAssetStats();
+    }
+  });
+}
 function setupAdminStudio(){
   if(window.__starVisualsAdminStudioSetup)return;
   if(!document.getElementById('adminServiceList'))return;
@@ -1069,18 +1346,21 @@ function setupAdminStudio(){
   document.getElementById('lessonCourseId')?.addEventListener('change',e=>loadAdminLessons(e.target.value));
   document.getElementById('lessonForm')?.addEventListener('submit',saveLessonForm);
   document.getElementById('lessonReset')?.addEventListener('click',()=>{document.getElementById('lessonForm')?.reset();document.getElementById('adminLessonList').innerHTML='<div class="admin-empty">Select a course to view lessons.</div>';});
+  setupAdminAssetLibrary();
+  setupAdminAssetTaxonomy();
 }
 
 async function loadAdminStudio(){
   if(!document.getElementById('adminServiceList')||!db)return;
   const admin=await isCurrentUserAdmin();
   if(!admin){location.href='dashboard.html';return;}
-  await Promise.all([loadAdminServices(),loadAdminCourses(),loadAdminLessons(document.getElementById('lessonCourseId')?.value||''),loadAssetCategories()]);
+  await Promise.all([loadAdminServices(),loadAdminCourses(),loadAdminLessons(document.getElementById('lessonCourseId')?.value||''),loadAssetCategories(),loadAssetCollections()]);
   setupAdminStudio();
 }
 
 async function init(){
   animateSocialCounters();
+  wireAssetLibraryUI();
   wireStaticServiceRows();
   await loadCoursesFromDatabase();
   await loadAssetCatalog();
@@ -1088,14 +1368,14 @@ async function init(){
   await loadStudio();
   if(document.getElementById('myAssetList'))await loadMyAssets();
   if(adminRequests)await loadAdminRequests();
-  if(document.getElementById('adminAssetList')){await loadAssetCategories();await loadAdminAssets();}
+  if(document.getElementById('adminAssetList')){await loadAssetCategories();await loadAssetCollections();await loadAdminAssets();await loadAdminAssetStats();}
   if(document.getElementById('adminServiceList'))await loadAdminStudio();
   if(db)db.auth.onAuthStateChange(async(event)=>{
     if(event==='PASSWORD_RECOVERY')showPasswordUpdate();
     if(event==='SIGNED_IN'&&isLoginPage)await navigateAfterAuth();
     await loadStudio();
     if(adminRequests)await loadAdminRequests();
-    if(document.getElementById('adminAssetList')){await loadAssetCategories();await loadAdminAssets();}
+    if(document.getElementById('adminAssetList')){await loadAssetCategories();await loadAssetCollections();await loadAdminAssets();await loadAdminAssetStats();}
     if(document.getElementById('adminServiceList'))await loadAdminStudio();
     await loadPublicServices();
     if(document.getElementById('myAssetList'))await loadMyAssets();

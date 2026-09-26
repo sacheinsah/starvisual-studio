@@ -4,57 +4,75 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#000000">
-  <meta name="description" content="STAR VISUALS Asset Library — premium motion, title, and editing resources.">
-  <title>STAR VISUALS — Asset Library</title>
+  <meta name="description" content="STAR VISUALS Creator Asset Library — templates, LUTs, presets, SFX and production resources.">
+  <title>STAR VISUALS — Creator Asset Library</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260925-auth-nav-fix-v4">
+  <link rel="stylesheet" href="style.css?v=20260926-asset-library-v2">
 </head>
 <body>
-  
-  <header class="header" id="siteHeader">
-    <a class="brand" href="index.html" aria-label="STAR VISUALS home"><span class="brand-star">✦</span><span>STAR</span><b>VISUALS</b></a>
-    <nav class="desktop-nav" aria-label="Primary navigation">
-      <a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">Dashboard</a>
-    </nav>
-    <div class="header-right"><a class="social-mini" href="https://www.instagram.com/starraj_01?stkn=MTd5OHhrOGk2YWZiag==" target="_blank" rel="noopener">Instagram ↗</a><a class="login-trigger" href="login.html">Log in / Sign up</a><button class="menu" type="button" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button></div>
-  </header>
-  <div class="mobile-nav" aria-hidden="true"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">Dashboard</a><a href="login.html">Log in / Sign up</a></div>
-  <main>
-    <section class="landing-hero compact">
-      <div class="eyebrow">STAR VISUALS / ASSET LIBRARY</div>
-      <h1>Creative assets.<br><em>Built for speed.</em></h1>
-      <p>Browse premium templates, presets, social visuals and editing resources designed to help creators ship polished content faster.</p>
-      <div class="hero-actions"><a class="btn" href="services.html">Back to services <span>↗</span></a></div>
-    </section>
-    <section class="section asset-library-wrap">
-      <div class="asset-library-shell">
-        <div class="asset-library-header">
-          <div>
-            <p class="eyebrow">STAR VISUALS ASSET LIBRARY</p>
-            <h3>Explore every resource.</h3>
-          </div>
-          <p>Free and premium assets, grouped for faster access across editing, motion graphics and content production workflows.</p>
-          <a class="btn" href="project.html">Request a custom edit <span>→</span></a>
-        </div>
-        <div id="assetCategoryCards" class="asset-category-cards" aria-label="Asset categories"></div>
-        <div class="asset-library-filterbar">
-          <button class="outline-btn" type="button" id="assetShowAll">All asset packs</button>
-          <span id="assetCategorySelection">All categories</span>
-        </div>
-        <div id="assetLibrarySections" class="service-asset-sections"></div>
-        <div class="asset-grid" id="assetLibraryGrid" hidden></div>
+<header class="header" id="siteHeader">
+  <a class="brand" href="index.html" aria-label="STAR VISUALS home"><span class="brand-star">✦</span><span>STAR</span><b>VISUALS</b></a>
+  <nav class="desktop-nav" aria-label="Primary navigation">
+    <a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">Dashboard</a>
+  </nav>
+  <div class="header-right"><a class="social-mini" href="https://www.instagram.com/starraj_01?stkn=MTd5OHhrOGk2YWZiag==" target="_blank" rel="noopener noreferrer">Instagram ↗</a><a class="login-trigger" href="login.html">Log in / Sign up</a><button class="menu" type="button" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button></div>
+</header>
+<div class="mobile-nav" aria-hidden="true"><a href="index.html">Home</a><a href="services.html">Services</a><a href="courses.html">Courses</a><a href="dashboard.html">Dashboard</a><a href="login.html">Log in / Sign up</a></div>
+
+<main class="asset-library-page-v2">
+  <section class="landing-hero compact asset-library-hero-v2">
+    <div class="eyebrow">STAR VISUALS / SERVICES / ASSET LIBRARY</div>
+    <h1>Everything you need to<br><em>create better content.</em></h1>
+    <p>Find production-ready assets for editing, motion, colour, sound and design — all managed from one creator library.</p>
+    <div class="asset-search-shell">
+      <span aria-hidden="true">⌕</span>
+      <input id="assetSearch" type="search" autocomplete="off" placeholder="Search assets, tags, formats, software…" aria-label="Search assets">
+    </div>
+  </section>
+
+  <section class="section asset-library-main-v2">
+    <div class="asset-library-v2-toolbar">
+      <div>
+        <p class="eyebrow">BROWSE</p>
+        <h2>Asset Library</h2>
       </div>
-    </section>
-  </main>
-  <footer>
-    <span>✦ STAR VISUALS</span>
-    <span>Video editor · Creator · Educator</span>
-    <span>© 2026</span>
-  </footer>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260925-auth-nav-fix-v4"></script>
+      <span id="assetResultCount" class="asset-result-count">Loading assets…</span>
+    </div>
+
+    <div id="assetCategoryCards" class="asset-category-cards-v2" aria-label="Asset categories"></div>
+
+    <div class="asset-filter-panel-v2">
+      <select id="assetCategoryFilter" data-asset-filter aria-label="Category"><option value="">All categories</option></select>
+      <select id="assetAccessFilter" data-asset-filter aria-label="Access"><option value="">All access</option><option value="free">Free</option><option value="premium">Premium</option></select>
+      <select id="assetFormatFilter" data-asset-filter aria-label="Format"><option value="">All formats</option></select>
+      <select id="assetSoftwareFilter" data-asset-filter aria-label="Software"><option value="">All software</option></select>
+      <select id="assetSortFilter" data-asset-filter aria-label="Sort"><option value="newest">Recently Added</option><option value="popular">Popular</option><option value="az">A–Z</option></select>
+      <button class="outline-btn" type="button" id="assetResetFilters">Reset</button>
+    </div>
+
+    <div class="asset-library-section-v2">
+      <div class="asset-section-title-v2"><div><p class="eyebrow">FEATURED</p><h3>Featured Collections</h3></div></div>
+      <div id="assetFeaturedGrid" class="asset-grid"></div>
+    </div>
+
+    <div class="asset-library-section-v2">
+      <div class="asset-section-title-v2"><div><p class="eyebrow">COLLECTIONS</p><h3>Curated Creator Packs</h3></div></div>
+      <div id="assetCollectionsGrid" class="asset-collections-grid-v2"></div>
+    </div>
+
+    <div class="asset-library-section-v2" id="assetResults">
+      <div class="asset-section-title-v2"><div><p class="eyebrow">ALL ASSETS</p><h3>Explore the library</h3></div></div>
+      <div id="assetLibraryGrid" class="asset-grid"></div>
+      <button class="btn asset-load-more-v2" id="assetLoadMore" type="button">Load more assets</button>
+    </div>
+  </section>
+</main>
+
+<footer><span>✦ STAR VISUALS</span><span>Video editor · Creator · Educator</span><span>© 2026</span></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="script.js?v=20260926-asset-library-v2"></script>
 </body>
 </html>

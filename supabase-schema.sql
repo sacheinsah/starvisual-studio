@@ -539,9 +539,9 @@ create policy "service_asset_links_admin_delete" on public.service_asset_links f
 grant select on public.service_asset_links to anon, authenticated;
 grant insert, update, delete on public.service_asset_links to authenticated;
 
--- Public bucket for admin-managed creative assets.
+-- Private bucket for admin-managed creative assets. Run supabase-asset-library-v2-secure.sql for authorized signed downloads.
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('star-assets', 'star-assets', true, 524288000)
+values ('star-assets', 'star-assets', false, 524288000)
 on conflict (id) do update set public = true;
 
 drop policy if exists "star_assets_admin_insert" on storage.objects;

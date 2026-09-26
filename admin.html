@@ -114,7 +114,7 @@
         <label>File size<input name="file_size" id="assetFileSize" placeholder="48 MB (auto detected on upload)"></label>
         <label>Access<select name="access_type" id="assetAccessType"><option value="free">Free</option><option value="premium">Premium</option></select></label>
         <label>Price (₹)<input type="number" name="price" id="assetPrice" min="0" value="0"></label>
-        <label>Collection<select id="assetCollection"><option value="">No collection</option></select></label>
+
         <label>Published<select name="published" id="assetPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
       </div>
       <label>Description<textarea name="description" id="assetDescription" rows="4" placeholder="What this asset does and who it is for."></textarea></label>
@@ -138,22 +138,7 @@
   </div>
 </section>
 
-<section class="section admin-section">
-  <div class="admin-toolbar"><div><p class="eyebrow">CATEGORIES</p><h2>Manage asset categories</h2></div></div>
-  <form class="asset-admin-form admin-editor-form" id="assetCategoryForm">
-    <input type="hidden" id="assetCategoryEditId" value="">
-    <div class="form-grid">
-      <label>Category name<input id="assetCategoryName" required></label>
-      <label>Sort order<input id="assetCategorySort" type="number" min="0" value="0"></label>
-      <label>Thumbnail URL<input id="assetCategoryThumbnail" placeholder="assets/asset-pack/asset-library-cover.svg"></label><label class="file-field">Upload category thumbnail<input id="assetCategoryThumbnailFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
-      <label>Status<select id="assetCategoryPublished"><option value="true">Published</option><option value="false">Draft</option></select></label>
-    </div>
-    <label>Description<textarea id="assetCategoryDescription" rows="3"></textarea></label>
-    <div class="asset-admin-actions"><button class="btn" type="submit">Save category</button><button class="outline-btn" type="button" id="assetCategoryReset">New category</button></div>
-    <p class="auth-note" id="assetCategoryStatus">Do not delete a category until its assets have been moved elsewhere.</p>
-  </form>
-  <div class="asset-category-admin-grid" id="adminAssetCategoryList"><div class="admin-empty">Loading categories…</div></div>
-</section>
+
 
 </main>
   <footer><span>✦ STAR VISUALS</span><span>Private admin workspace</span><span>© 2026</span></footer>

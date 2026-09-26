@@ -745,16 +745,42 @@ async function loadAssetCatalog(){
   assetLibraryState.loading=false;
   updateAssetFilterOptions();
   renderAssetLibrary();
-  await renderAssignedServiceAssets();
+  renderServiceAssetLibrary();
 }
 function renderAssetCategoryCards(){
   const host=document.getElementById('assetCategoryCards');if(!host)return;
   const counts=new Map();
   assetLibraryState.assets.forEach(a=>counts.set(a.category,(counts.get(a.category)||0)+1));
-  host.innerHTML=`<button type="button" class="asset-category-card-v2 active" data-asset-category-filter="">All<span>${assetLibraryState.assets.length}</span></button>`+
-    ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>`<button type="button" class="asset-category-card-v2" data-asset-category-filter="${escapeHtml(c.name)}"><span class="asset-category-card-v2-name">${escapeHtml(c.name)}</span><span>${counts.get(c.name)||0}</span></button>`).join('');
+  host.innerHTML=`<a class="asset-category-card-v2 active" href="assets.html"><span class="asset-category-card-v2-name">All</span><span>${assetLibraryState.assets.length}</span></a>`+
+    ASSET_LIBRARY_CATEGORY_OBJECTS.map(c=>`<a class="asset-category-card-v2" href="assets.html?category=${assetCategorySlug(c.name)}"><span class="asset-category-card-v2-name">${escapeHtml(c.name)}</span><span>${counts.get(c.name)||0}</span></a>`).join('');
 }
 function renderAssetLibrary(){
+  const categoryMode=Boolean(assetLibraryState.category);
+  const categoryName=assetLibraryState.category||'';
+  const categoryHero=document.querySelector('.asset-library-hero-v2');
+  if(categoryHero){
+    const eyebrow=categoryHero.querySelector('.eyebrow');
+    const title=categoryHero.querySelector('h1');
+    const copy=categoryHero.querySelector('p');
+    if(categoryMode){
+      if(eyebrow)eyebrow.textContent=`STAR VISUALS / ASSET LIBRARY / ${categoryName.toUpperCase()}`;
+      if(title)title.innerHTML=`<span>${escapeHtml(categoryName)} Assets</span><br><em>Ready to download.</em>`;
+      if(copy)copy.textContent=`Browse every published ${categoryName} asset uploaded by the STAR VISUALS admin.`;
+    }else{
+      if(eyebrow)eyebrow.textContent='STAR VISUALS / SERVICES / ASSET LIBRARY';
+      if(title)title.innerHTML='Everything you need to<br><em>create better content.</em>';
+      if(copy)copy.textContent='Find production-ready assets for editing, motion, colour, sound and design — all managed from one creator library.';
+    }
+  }
+  const featuredSection=document.getElementById('assetFeaturedGrid')?.closest('.asset-library-section-v2');
+  const collectionsSection=document.getElementById('assetCollectionsGrid')?.closest('.asset-library-section-v2');
+  if(featuredSection)featuredSection.hidden=categoryMode;
+  if(collectionsSection)collectionsSection.hidden=categoryMode;
+  const resultSection=document.getElementById('assetResults');
+  const resultTitle=resultSection?.querySelector('.asset-section-title-v2 h3');
+  const resultEyebrow=resultSection?.querySelector('.asset-section-title-v2 .eyebrow');
+  if(resultTitle)resultTitle.textContent=categoryMode?`${categoryName} — All Uploaded Assets`:'Explore the library';
+  if(resultEyebrow)resultEyebrow.textContent=categoryMode?'CATEGORY LIBRARY':'ALL ASSETS';
   const categorySelect=document.getElementById('assetCategoryFilter');
   if(categorySelect)categorySelect.value=assetLibraryState.category||'';
   const accessSelect=document.getElementById('assetAccessFilter');
@@ -773,11 +799,11 @@ function renderAssetLibrary(){
   if(resultCount)resultCount.textContent=`${visible.length} asset${visible.length===1?'':'s'} found`;
   if(grid){
     const end=assetLibraryState.page*ASSET_PAGE_SIZE;
-    const pageItems=visible.slice(0,end);
+    const pageItems=categoryMode?visible:visible.slice(0,end);
     grid.innerHTML=pageItems.length?assetCardsMarkup(pageItems):'<div class="asset-empty-v2"><strong>No assets found</strong><span>Try another search, category or filter.</span></div>';
     hydrateAssetMedia(grid);
     const more=document.getElementById('assetLoadMore');
-    if(more)more.hidden=end>=visible.length;
+    if(more){more.hidden=categoryMode||end>=visible.length;more.textContent=categoryMode?'':'Load more assets';}
   }
   const featured=document.getElementById('assetFeaturedGrid');
   if(featured){
@@ -1082,98 +1108,6 @@ function setupAdminAssetLibrary(){
 }
 
 /* ============================================================
-   SERVICE ↔ ASSET LIBRARY ASSIGNMENTS
-   ============================================================ */
-let serviceAssetAssignmentsCache={services:[],assets:[],links:[]};
-
-async function loadServiceAssetAssignments(){
-  if(!db)return;
-  const {data:services,error:serviceError}=await db.from('service_packages').select('id,name,published,sort_order').order('sort_order').order('name');
-  if(serviceError){console.error('Service asset services load failed:',serviceError);return;}
-  const {data:assets,error:assetError}=await db.from('asset_library').select('*').order('created_at',{ascending:false});
-  const {data:links,error:linkError}=await db.from('service_asset_links').select('service_id,asset_id').order('created_at');
-  if(assetError)console.error('Service asset assignment asset load failed:',assetError);
-  if(linkError)console.error('Service asset links load failed:',linkError);
-  serviceAssetAssignmentsCache={
-    services:services||[],
-    assets:assetError?(assetLibraryState.assets||[]):dedupeAssets(assets||[]),
-    links:linkError?[]:(links||[])
-  };
-  renderServiceAssetAdminOptions();
-  renderServiceAssetLibrary();
-}
-
-function renderServiceAssetAdminOptions(){
-  const host=document.getElementById('serviceAssetOptions'), select=document.getElementById('serviceAssetService');
-  if(!host||!select)return;
-  const previous=select.value;
-  select.innerHTML='<option value="">Select service</option>'+serviceAssetAssignmentsCache.services.map(s=>`<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}${s.published?'':' (Draft)'}</option>`).join('');
-  if(previous&&serviceAssetAssignmentsCache.services.some(s=>String(s.id)===String(previous)))select.value=previous;
-  const serviceId=select.value;
-  const selected=new Set(serviceAssetAssignmentsCache.links.filter(l=>String(l.service_id)===String(serviceId)).map(l=>String(l.asset_id)));
-  const search=String(document.getElementById('serviceAssetSearch')?.value||'').trim().toLowerCase();
-  const assets=(serviceAssetAssignmentsCache.assets||[]).filter(a=>{
-    if(!search)return true;
-    return [a.name,a.category,a.subcategory,a.file_type,a.software,...(a.tags||[])].join(' ').toLowerCase().includes(search);
-  });
-  if(!serviceId){host.innerHTML='<div class="admin-empty">Select an editing service to manage its assets.</div>';return;}
-  host.innerHTML=assets.length?assets.map(a=>`<label class="admin-request service-asset-option" style="display:flex;align-items:center;gap:14px;cursor:pointer;">
-    <input type="checkbox" data-service-asset="${escapeHtml(a.id)}" ${selected.has(String(a.id))?'checked':''}>
-    <span style="flex:1"><strong>${escapeHtml(a.name)}</strong><small style="display:block;opacity:.7">${escapeHtml(a.category||'—')} · ${escapeHtml(a.file_type||'FILE')} · ${a.access_type==='premium'?'Premium':'Free'}</small></span>
-  </label>`).join(''):'<div class="admin-empty">No assets match this search.</div>';
-}
-
-async function saveServiceAssetAssignments(){
-  const select=document.getElementById('serviceAssetService'), host=document.getElementById('serviceAssetOptions');
-  if(!db||!select||!host)return;
-  const serviceId=select.value;
-  if(!serviceId){setAdminFeatureStatus('serviceAssetStatus','Select an editing service first.',true);return;}
-  const selected=[...host.querySelectorAll('[data-service-asset]:checked')].map(input=>String(input.dataset.serviceAsset));
-  setAdminFeatureStatus('serviceAssetStatus','Saving service asset assignments…');
-  const {error:deleteError}=await db.from('service_asset_links').delete().eq('service_id',serviceId);
-  if(deleteError){setAdminFeatureStatus('serviceAssetStatus',friendlyError(deleteError),true);return;}
-  if(selected.length){
-    const rows=selected.map(asset_id=>({service_id:serviceId,asset_id}));
-    const {error:insertError}=await db.from('service_asset_links').insert(rows);
-    if(insertError){setAdminFeatureStatus('serviceAssetStatus',friendlyError(insertError),true);return;}
-  }
-  setAdminFeatureStatus('serviceAssetStatus',`Saved ${selected.length} asset${selected.length===1?'':'s'} for this service.`);
-  await loadServiceAssetAssignments();
-}
-
-async function renderAssignedServiceAssets(){
-  const host=document.getElementById('servicesAssetSections');
-  if(!host)return;
-  if(!db){
-    renderServiceAssetLibrary();
-    return;
-  }
-  const {data:services}=await db.from('service_packages').select('id,name,published,sort_order').eq('published',true).order('sort_order');
-  const {data:links,error}=await db.from('service_asset_links').select('service_id,asset_id').order('created_at');
-  if(error||!links?.length){
-    renderServiceAssetLibrary();
-    return;
-  }
-  const assetMap=new Map(assetLibraryState.assets.map(a=>[String(a.id),a]));
-  const sections=(services||[]).map(service=>{
-    const assets=links.filter(l=>String(l.service_id)===String(service.id)).map(l=>assetMap.get(String(l.asset_id))).filter(Boolean);
-    return {service,assets};
-  }).filter(section=>section.assets.length);
-  if(!sections.length){
-    renderServiceAssetLibrary();
-    return;
-  }
-  host.innerHTML=sections.map(({service,assets})=>`<section class="service-asset-group-v2">
-    <div class="service-asset-group-head-v2"><div><p class="eyebrow">SERVICE ASSETS</p><h3>${escapeHtml(service.name)}</h3></div><a class="quiet-link" href="assets.html">Explore full library →</a></div>
-    <div class="asset-grid">${assetCardsMarkup(assets.slice(0,8))}</div>
-    <div class="asset-library-service-categories" aria-label="${escapeHtml(service.name)} asset categories">
-      ${[...new Set(assets.map(a=>a.category).filter(Boolean))].map(category=>`<a href="assets.html?category=${assetCategorySlug(category)}">${escapeHtml(category)} <span>→</span></a>`).join('')}
-    </div>
-  </section>`).join('');
-  hydrateAssetMedia(host);
-}
-
-/* ============================================================
    ADMIN STUDIO — services, courses, lessons, storage
    ============================================================ */
 async function isCurrentUserAdmin(){
@@ -1454,14 +1388,13 @@ function setupAdminStudio(){
   document.getElementById('lessonReset')?.addEventListener('click',()=>{document.getElementById('lessonForm')?.reset();document.getElementById('adminLessonList').innerHTML='<div class="admin-empty">Select a course to view lessons.</div>';});
   setupAdminAssetLibrary();
   setupAdminAssetTaxonomy();
-  setupAdminServiceAssetLinks();
 }
 
 async function loadAdminStudio(){
   if(!document.getElementById('adminServiceList')||!db)return;
   const admin=await isCurrentUserAdmin();
   if(!admin){location.href='dashboard.html';return;}
-  await Promise.all([loadAdminServices(),loadAdminCourses(),loadAdminLessons(document.getElementById('lessonCourseId')?.value||''),loadAssetCategories(),loadAssetCollections(),loadServiceAssetAssignments()]);
+  await Promise.all([loadAdminServices(),loadAdminCourses(),loadAdminLessons(document.getElementById('lessonCourseId')?.value||''),loadAssetCategories(),loadAssetCollections()]);
   setupAdminStudio();
 }
 

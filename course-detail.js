@@ -164,7 +164,9 @@
     }
 
     course = data;
-    document.title = `STAR VISUALS — ${course.title}`;
+    document.title = `Star Visuals | ${course.title}`;
+    const canonical=document.querySelector('link[rel="canonical"]');
+    if(canonical)canonical.href=`https://starvisual.in/course-detail.html?id=${encodeURIComponent(course.id)}`;
     titleEl.textContent = course.title;
     descriptionEl.textContent = course.description || 'Practical lessons and projects from STAR VISUALS.';
     introEl.textContent = `${course.duration || 'Course'} · ${course.delivery || 'STAR VISUALS'} — join the course to unlock its lectures and materials.`;

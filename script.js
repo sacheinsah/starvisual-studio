@@ -199,7 +199,7 @@ function updateHeaderAuth(session,isAdmin=false){
     const href=link.getAttribute('href');
     if(href==='dashboard.html'||href==='admin.html'){
       link.href=isAdmin?'admin.html':'dashboard.html';
-      link.textContent=isAdmin?'Admin Panel':'My Studio';
+      link.textContent=isAdmin?'Admin Panel':'Dashboard';
     }
   });
 }

@@ -979,7 +979,7 @@ async function loadMyAssets(){
   const {data:favs}=await db.from('asset_favorites').select('asset_id,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(12);
   const ids=(favs||[]).map(r=>r.asset_id);
   if(!ids.length){host.innerHTML='<div class="asset-empty-v2"><strong>No saved assets yet.</strong><span>Tap ♡ on any asset to build your library.</span></div>';return;}
-  const {data:assets}=await db.from('asset_library').select('*').in('id',ids).eq('published',true);
+  const {data:assets}=await db.from('asset_library').select('id,name,description,category,subcategory,tags,thumbnail_url,preview_url,file_url,external_download_url,file_type,file_size,software,software_compatibility,access_type,price,published,downloads_count,created_at,featured,trending').in('id',ids).eq('published',true);
   host.innerHTML=assetCardsMarkup((assets||[]).map(normalizeAsset));hydrateAssetMedia(host);
 }
 async function uploadAdminFile(bucket,file,folder){
@@ -1038,7 +1038,7 @@ function setupAdminAssetLibrary(){
     let uploadedPaths=[];
     try{
       setAssetStatus(file||thumb||preview?'Validating and uploading files…':'Saving asset…');
-      const existing=id?(await db.from('asset_library').select('*').eq('id',id).maybeSingle()).data:null;
+      const existing=id?(await db.from('asset_library').select('id,name,description,category,subcategory,tags,thumbnail_url,preview_url,file_url,external_download_url,file_type,file_size,software,software_compatibility,access_type,price,published,downloads_count,created_at,featured,trending').eq('id',id).maybeSingle()).data:null;
       let fileUrl=String(document.getElementById('assetFileUrl')?.value||'').trim();
       let thumbnailUrl=String(document.getElementById('assetThumbnail')?.value||'').trim()||'assets/asset-pack/asset-library-cover.svg';
       let previewUrl=String(document.getElementById('assetPreview')?.value||'').trim();
@@ -1093,7 +1093,7 @@ function setupAdminAssetLibrary(){
   document.getElementById('adminAssetList')?.addEventListener('click',async e=>{
     const edit=e.target.closest('[data-asset-edit]');
     if(edit){
-      const {data,error}=await db.from('asset_library').select('*').eq('id',edit.dataset.assetEdit).maybeSingle();
+      const {data,error}=await db.from('asset_library').select('id,name,description,category,subcategory,tags,thumbnail_url,preview_url,file_url,external_download_url,file_type,file_size,software,software_compatibility,access_type,price,published,downloads_count,created_at,featured,trending').eq('id',edit.dataset.assetEdit).maybeSingle();
       if(error||!data){setAssetStatus(friendlyError(error||'Asset not found.'),true);return;}
       document.getElementById('assetEditId').value=data.id;
       document.getElementById('assetName').value=data.name||'';
@@ -1286,7 +1286,7 @@ function setupAdminStudio(){
   document.getElementById('serviceReset')?.addEventListener('click',()=>{document.getElementById('serviceForm')?.reset();document.getElementById('serviceEditId').value='';});
   document.getElementById('adminServiceList')?.addEventListener('click',async e=>{
     const edit=e.target.closest('[data-service-edit]'),del=e.target.closest('[data-service-delete]');
-    if(edit){const {data}=await db.from('service_packages').select('*').eq('id',edit.dataset.serviceEdit).maybeSingle();if(data){document.getElementById('serviceEditId').value=data.id;document.getElementById('serviceName').value=data.name;document.getElementById('serviceDescription').value=data.description||'';document.getElementById('servicePrice').value=data.price_display;document.getElementById('serviceSort').value=data.sort_order;document.getElementById('servicePublished').value=String(data.published);}}
+    if(edit){const {data}=await db.from('service_packages').select('id,name,description,price_display,sort_order,published').eq('id',edit.dataset.serviceEdit).maybeSingle();if(data){document.getElementById('serviceEditId').value=data.id;document.getElementById('serviceName').value=data.name;document.getElementById('serviceDescription').value=data.description||'';document.getElementById('servicePrice').value=data.price_display;document.getElementById('serviceSort').value=data.sort_order;document.getElementById('servicePublished').value=String(data.published);}}
     if(del){if(!confirm('Delete this service?'))return;await db.from('service_packages').delete().eq('id',del.dataset.serviceDelete);await loadAdminServices();await loadPublicServices();}
   });
   document.getElementById('courseAdminForm')?.addEventListener('submit',saveCourseForm);
@@ -1294,7 +1294,7 @@ function setupAdminStudio(){
   document.getElementById('courseReset')?.addEventListener('click',()=>{document.getElementById('courseAdminForm')?.reset();document.getElementById('courseEditId').value='';});
   document.getElementById('adminCourseList')?.addEventListener('click',async e=>{
     const edit=e.target.closest('[data-course-edit]'),del=e.target.closest('[data-course-delete]');
-    if(edit){const {data}=await db.from('courses').select('*').eq('id',edit.dataset.courseEdit).maybeSingle();if(data){document.getElementById('courseEditId').value=data.id;document.getElementById('adminCourseTitle').value=data.title||'';document.getElementById('adminCourseSlug').value=data.slug||'';document.getElementById('adminCourseCategory').value=data.category||'';document.getElementById('adminCoursePrice').value=Number(data.price_inr||0);document.getElementById('adminCourseDuration').value=data.duration||'';document.getElementById('adminCourseDelivery').value=data.delivery||'';document.getElementById('adminCourseSort').value=Number(data.sort_order||0);document.getElementById('adminCoursePublished').value=String(data.published);document.getElementById('adminCourseDescription').value=data.description||'';window.scrollTo({top:document.getElementById('courseAdminForm').offsetTop-100,behavior:'smooth'});}}
+    if(edit){const {data}=await db.from('courses').select('id,title,description,duration,delivery,price_inr,slug,category,sort_order,published,created_at').eq('id',edit.dataset.courseEdit).maybeSingle();if(data){document.getElementById('courseEditId').value=data.id;document.getElementById('adminCourseTitle').value=data.title||'';document.getElementById('adminCourseSlug').value=data.slug||'';document.getElementById('adminCourseCategory').value=data.category||'';document.getElementById('adminCoursePrice').value=Number(data.price_inr||0);document.getElementById('adminCourseDuration').value=data.duration||'';document.getElementById('adminCourseDelivery').value=data.delivery||'';document.getElementById('adminCourseSort').value=Number(data.sort_order||0);document.getElementById('adminCoursePublished').value=String(data.published);document.getElementById('adminCourseDescription').value=data.description||'';window.scrollTo({top:document.getElementById('courseAdminForm').offsetTop-100,behavior:'smooth'});}}
     if(del){if(!confirm('Delete this course?'))return;const r=await db.from('courses').delete().eq('id',del.dataset.courseDelete);if(r.error){setAdminFeatureStatus('courseAdminStatus',friendlyError(r.error),true);return;}await loadAdminCourses();}
   });
   document.getElementById('lessonCourseId')?.addEventListener('change',e=>loadAdminLessons(e.target.value));

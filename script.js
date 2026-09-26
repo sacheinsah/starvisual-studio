@@ -1374,7 +1374,7 @@ async function loadAdminStudio(){
   if(!document.getElementById('adminServiceList')||!db)return;
   const admin=await isCurrentUserAdmin();
   if(!admin){location.href='dashboard.html';return;}
-  await Promise.all([loadAdminServices(),loadAdminCourses(),loadAdminLessons(document.getElementById('lessonCourseId')?.value||''),loadAssetCategories(),loadAssetCollections()]);
+  await Promise.all([loadAdminServices(),loadAdminCourses(),loadAdminLessons(document.getElementById('lessonCourseId')?.value||''),loadAssetCategories()]);
   setupAdminStudio();
 }
 

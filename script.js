@@ -1,7 +1,7 @@
 const adminStatus=document.getElementById('adminStatus');
 const adminRequests=document.getElementById('adminRequests');
 function setAdminStatus(message,error=false){if(adminStatus){adminStatus.textContent=message;adminStatus.classList.toggle('error',error)}}
-function adminRequestCard(request,profile){const contact=request.email||profile?.email||'No email provided';const phone=request.phone||'No phone provided';const service=request.service_type||request.package_name||'Editing request';const brief=request.requirements||'No brief provided';return `<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(request.project_name)}</span><h3>${escapeHtml(service)}</h3></div><select class="admin-status-select" data-request-id="${request.id}" aria-label="Update request status"><option value="NEW" ${request.status==='NEW'?'selected':''}>New</option><option value="REVIEWING" ${request.status==='REVIEWING'?'selected':''}>Reviewing</option><option value="QUOTED" ${request.status==='QUOTED'?'selected':''}>Quoted</option><option value="APPROVED" ${request.status==='APPROVED'?'selected':''}>Approved</option><option value="IN PROGRESS" ${request.status==='IN PROGRESS'?'selected':''}>In progress</option><option value="REVISION" ${request.status==='REVISION'?'selected':''}>Revision</option><option value="COMPLETED" ${request.status==='COMPLETED'?'selected':''}>Completed</option><option value="CANCELLED" ${request.status==='CANCELLED'?'selected':''}>Cancelled</option></select></div><div class="admin-request-grid"><div><span>CLIENT</span><strong>${escapeHtml(request.full_name||profile?.full_name||'Unknown')}</strong><small>${escapeHtml(contact)}<br>${escapeHtml(phone)}</small></div><div><span>SERVICE / PLATFORM</span><strong>${escapeHtml(service)}</strong><small>${escapeHtml(request.platform||'Platform not specified')} · ${escapeHtml(request.video_duration||'Duration not specified')}</small></div><div><span>BUDGET / DEADLINE</span><strong>${escapeHtml(request.budget||'Not specified')}</strong><small>${escapeHtml(request.deadline||'No deadline')} · ${request.created_at?new Date(request.created_at).toLocaleDateString('en-IN'):''}</small></div></div><div class="admin-brief"><span>PROJECT BRIEF</span><p>${escapeHtml(brief)}</p>${request.footage_link?`<a href="${escapeHtml(request.footage_link)}" target="_blank" rel="noopener">Open footage link ↗</a>`:''}${request.reference_link?`<a href="${escapeHtml(request.reference_link)}" target="_blank" rel="noopener">Open reference link ↗</a>`:''}</div><label class="admin-brief"><span>ADMIN MESSAGE</span><textarea data-admin-notes="${request.id}" rows="3" placeholder="Message visible in My Studio">${escapeHtml(request.admin_notes||'')}</textarea></label></article>`}async function loadAdminRequests(){if(!adminRequests||!db)return;setAdminStatus('Checking administrator access…');adminRequests.innerHTML='<div class="admin-empty">Loading requests…</div>';const session=await getCurrentSession();if(!session?.user){location.href='login.html?returnTo=admin.html';return}const {data:isAdmin,error:adminError}=await db.rpc('project_request_admin_check');if(adminError||!isAdmin){location.href='dashboard.html';return}const {data:requests,error}=await db.from('project_requests').select('id,user_id,full_name,email,phone,project_name,service_type,video_duration,platform,editing_style,requirements,deadline,budget,footage_link,reference_link,additional_notes,status,admin_notes,created_at,updated_at,package_name,amount_inr,notes').order('created_at',{ascending:false});if(error){console.error('Project request load failed:',error);setAdminStatus(friendlyError(error),true);adminRequests.innerHTML='<div class="admin-empty">Requests could not be loaded.</div>';return}const ids=[...new Set((requests||[]).map(request=>request.user_id))];const {data:profiles}=ids.length?await db.from('profiles').select('id,full_name,email').in('id',ids):{data:[]};const profileMap=new Map((profiles||[]).map(profile=>[profile.id,profile]));adminRequests.innerHTML=requests?.length?requests.map(request=>adminRequestCard(request,profileMap.get(request.user_id))).join(''):'<div class="admin-empty">No editing requests yet.</div>';setAdminStatus(`${requests?.length||0} request${requests?.length===1?'':'s'} found.`)}
+function adminRequestCard(request,profile){const contact=request.email||profile?.email||'No email provided';const phone=request.phone||'No phone provided';const service=request.service_type||request.package_name||'Editing request';const brief=request.requirements||'No brief provided';return `<article class="admin-request"><div class="admin-request-head"><div><span class="admin-index">${escapeHtml(request.project_name)}</span><h3>${escapeHtml(service)}</h3></div><select class="admin-status-select" data-request-id="${request.id}" aria-label="Update request status"><option value="NEW" ${request.status==='NEW'?'selected':''}>New</option><option value="REVIEWING" ${request.status==='REVIEWING'?'selected':''}>Reviewing</option><option value="QUOTED" ${request.status==='QUOTED'?'selected':''}>Quoted</option><option value="APPROVED" ${request.status==='APPROVED'?'selected':''}>Approved</option><option value="IN PROGRESS" ${request.status==='IN PROGRESS'?'selected':''}>In progress</option><option value="REVISION" ${request.status==='REVISION'?'selected':''}>Revision</option><option value="COMPLETED" ${request.status==='COMPLETED'?'selected':''}>Completed</option><option value="CANCELLED" ${request.status==='CANCELLED'?'selected':''}>Cancelled</option></select></div><div class="admin-request-grid"><div><span>CLIENT</span><strong>${escapeHtml(request.full_name||profile?.full_name||'Unknown')}</strong><small>${escapeHtml(contact)}<br>${escapeHtml(phone)}</small></div><div><span>SERVICE / PLATFORM</span><strong>${escapeHtml(service)}</strong><small>${escapeHtml(request.platform||'Platform not specified')} · ${escapeHtml(request.video_duration||'Duration not specified')}</small></div><div><span>BUDGET / DEADLINE</span><strong>${escapeHtml(request.budget||'Not specified')}</strong><small>${escapeHtml(request.deadline||'No deadline')} · ${request.created_at?new Date(request.created_at).toLocaleDateString('en-IN'):''}</small></div></div><div class="admin-brief"><span>PROJECT BRIEF</span><p>${escapeHtml(brief)}</p>${request.footage_link?`<a href="${escapeHtml(request.footage_link)}" target="_blank" rel="noopener">Open footage link ↗</a>`:''}${request.reference_link?`<a href="${escapeHtml(request.reference_link)}" target="_blank" rel="noopener">Open reference link ↗</a>`:''}</div><label class="admin-brief"><span>ADMIN MESSAGE</span><textarea data-admin-notes="${request.id}" rows="3" placeholder="Message visible in My Studio">${escapeHtml(request.admin_notes||'')}</textarea></label></article>`}async function loadAdminRequests(){if(!adminRequests||!db)return;setAdminStatus('Checking administrator access…');adminRequests.innerHTML='<div class="admin-empty">Loading requests…</div>';const session=await getCurrentSession();if(!session?.user){location.href='login.html?returnTo=admin.html';return}const {data:isAdmin,error:adminError}=await db.rpc('project_request_admin_check');if(adminError||!isAdmin){location.href='dashboard.html';return}const {data:requests,error}=await db.from('project_requests').select('id,user_id,full_name,email,phone,project_name,service_type,video_duration,platform,editing_style,requirements,deadline,budget,footage_link,reference_link,additional_notes,status,admin_notes,created_at,updated_at,package_name,amount_inr,notes').order('created_at',{ascending:false}).limit(100);if(error){console.error('Project request load failed:',error);setAdminStatus(friendlyError(error),true);adminRequests.innerHTML='<div class="admin-empty">Requests could not be loaded.</div>';return}const ids=[...new Set((requests||[]).map(request=>request.user_id))];const {data:profiles}=ids.length?await db.from('profiles').select('id,full_name,email').in('id',ids):{data:[]};const profileMap=new Map((profiles||[]).map(profile=>[profile.id,profile]));adminRequests.innerHTML=requests?.length?requests.map(request=>adminRequestCard(request,profileMap.get(request.user_id))).join(''):'<div class="admin-empty">No editing requests yet.</div>';setAdminStatus(`${requests?.length||0} request${requests?.length===1?'':'s'} found.`)}
 document.getElementById('adminRefresh')?.addEventListener('click',loadAdminRequests);
 adminRequests?.addEventListener('change',async event=>{const select=event.target.closest('.admin-status-select');if(!select||!db)return;select.disabled=true;const {error}=await db.from('project_requests').update({status:select.value,updated_at:new Date().toISOString()}).eq('id',select.dataset.requestId);select.disabled=false;if(error){console.error('Project request status update failed:',error);setAdminStatus(friendlyError(error),true);return}setAdminStatus('Request status updated.')});adminRequests?.addEventListener('change',async event=>{const notes=event.target.closest('[data-admin-notes]');if(!notes||!db)return;const {error}=await db.from('project_requests').update({admin_notes:notes.value,updated_at:new Date().toISOString()}).eq('id',notes.dataset.adminNotes);if(error){console.error('Admin note update failed:',error);setAdminStatus(friendlyError(error),true);return}setAdminStatus('Admin message saved.')});
 /* STAR VISUALS — shared UI, email/password + Google authentication and Supabase data */
@@ -68,12 +68,19 @@ if(firstPortfolioVideo){
   if(source){source.src='assets/asset-pack/project-01.mp4';firstPortfolioVideo.load();}
 }
 const portfolioVideos=[...document.querySelectorAll('#portfolio video')];
-const startPortfolioVideos=()=>portfolioVideos.forEach(video=>{video.muted=true;video.play().catch(()=>{});});
 if(portfolioVideos.length){
-  startPortfolioVideos();
-  window.addEventListener('scroll',startPortfolioVideos,{passive:true});
+  portfolioVideos.forEach(video=>{video.muted=true;});
   if('IntersectionObserver' in window){
-    new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))startPortfolioVideos();},{threshold:.15}).observe(document.getElementById('portfolio'));
+    const portfolioVideoObserver=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        const video=entry.target;
+        if(entry.isIntersecting){video.play().catch(()=>{});}
+        else if(!video.hasAttribute('controls')){video.pause();}
+      });
+    },{threshold:.15});
+    portfolioVideos.forEach(video=>portfolioVideoObserver.observe(video));
+  }else{
+    portfolioVideos.forEach(video=>video.play().catch(()=>{}));
   }
 }
 let toastTimer; function toast(msg){const t=document.getElementById('toast')||(()=>{const x=document.createElement('div');x.id='toast';x.className='toast';document.body.appendChild(x);return x})();t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3200)}
@@ -343,7 +350,8 @@ async function loadCoursesFromDatabase(){
     .select('id,title,description,duration,delivery,price_inr,slug,category,sort_order,published,created_at')
     .eq('published',true)
     .order('sort_order',{ascending:true})
-    .order('created_at',{ascending:true});
+    .order('created_at',{ascending:true})
+    .limit(50);
 
   if(error){
     console.error('Course catalog load failed:',error);
@@ -753,6 +761,31 @@ async function loadAssetCatalog({append=false}={}){
   }
   if(assetLibraryState.featured)query=query.eq('featured',true);
   if(assetLibraryState.trending)query=query.eq('trending',true);
+  if(assetLibraryState.collection){
+    const {data:collectionItems,error:collectionError}=await db.from('asset_collection_items')
+      .select('asset_id')
+      .eq('collection_id',assetLibraryState.collection)
+      .limit(1000);
+    if(collectionError){
+      console.error('Asset collection filter failed:',collectionError);
+      assetLibraryState.assets=append?assetLibraryState.assets:[];
+      assetLibraryState.hasMore=false;
+      assetLibraryState.loading=false;
+      renderAssetLibrary();
+      renderServiceAssetLibrary();
+      return;
+    }
+    const collectionAssetIds=(collectionItems||[]).map(row=>row.asset_id).filter(Boolean);
+    if(!collectionAssetIds.length){
+      assetLibraryState.assets=append?assetLibraryState.assets:[];
+      assetLibraryState.hasMore=false;
+      assetLibraryState.loading=false;
+      renderAssetLibrary();
+      renderServiceAssetLibrary();
+      return;
+    }
+    query=query.in('id',collectionAssetIds);
+  }
   const orderColumn=assetLibraryState.sort==='popular'?'downloads_count':assetLibraryState.sort==='az'?'name':'created_at';
   query=query.order(orderColumn,{ascending:assetLibraryState.sort==='az'});
   const from=append?assetLibraryState.assets.length:0;
@@ -951,9 +984,12 @@ function wireAssetLibraryUI(){
   });
   document.getElementById('assetResetFilters')?.addEventListener('click',resetAssetLibraryFilters);
   document.getElementById('assetLoadMore')?.addEventListener('click',async()=>{await loadAssetCatalog({append:true});});
-  document.getElementById('assetCollectionsGrid')?.addEventListener('click',e=>{
+  document.getElementById('assetCollectionsGrid')?.addEventListener('click',async e=>{
     const btn=e.target.closest('[data-asset-collection]');if(!btn)return;
-    assetLibraryState.collection=btn.dataset.assetCollection;assetLibraryState.page=1;renderAssetLibrary();
+    assetLibraryState.collection=btn.dataset.assetCollection;
+    assetLibraryState.page=1;
+    assetLibraryState.assets=[];
+    await loadAssetCatalog();
     document.getElementById('assetLibraryGrid')?.scrollIntoView({behavior:'smooth',block:'start'});
   });
   document.addEventListener('click',async e=>{

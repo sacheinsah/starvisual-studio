@@ -18,6 +18,7 @@
 
   async function session(){
     if(!window.db) return null;
+    if(typeof getCurrentSession==='function') return getCurrentSession();
     const {data,error}=await window.db.auth.getSession();
     if(error) console.error('Lecture auth error:',error);
     return data?.session || null;

@@ -20,6 +20,10 @@ create index if not exists asset_library_published_featured_idx
 create index if not exists asset_library_published_trending_idx
   on public.asset_library (published, trending, created_at desc);
 
+-- Collection browsing first resolves membership by collection_id, then asset ids.
+create index if not exists asset_collection_items_collection_asset_idx
+  on public.asset_collection_items (collection_id, asset_id);
+
 create index if not exists courses_published_sort_created_idx
   on public.courses (published, sort_order, created_at desc);
 

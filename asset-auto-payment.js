@@ -1,6 +1,6 @@
 /* STAR VISUALS — Automated premium asset payments
-   Uses Razorpay Checkout + Supabase Edge Functions. The browser never receives the Razorpay secret.
-   The existing manual UPI/UTR flow remains available when the gateway is disabled.
+   Direct Razorpay Checkout for premium assets.
+   The browser never receives the Razorpay secret and no UTR/manual-payment flow is used on the storefront.
 */
 (function(){
   const FN='https://gncihtlanzhbskdrvgbf.supabase.co/functions/v1/';
@@ -14,13 +14,13 @@
 
   async function loadConfig(){
     if(configPromise)return configPromise;
-    configPromise=(async()=>{try{const headers=await jsonHeaders();const r=await fetch(`${FN}asset-payment-config`,{method:'POST',headers,body:'{}'});return r.ok?await r.json():{enabled:false}}catch(e){console.warn('Automatic payment config unavailable',e);return {enabled:false}}})();
+    configPromise=(async()=>{try{const headers=await jsonHeaders();const r=await fetch(`${FN}asset-payment-config`,{method:'POST',headers,body:'{}'});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Could not load payment configuration');return data;}catch(e){console.warn('Automatic payment config unavailable',e);return {enabled:false,error:e.message||'Automatic payments are unavailable'}}})();
     return configPromise;
   }
   function loadRazorpay(){
     if(window.Razorpay)return Promise.resolve();
     if(checkoutLoading)return checkoutLoading;
-    checkoutLoading=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://checkout.razorpay.com/v1/checkout.js';s.async=true;s.onload=resolve;s.onerror=()=>reject(new Error('Could not load secure payment checkout'));document.head.appendChild(s)});
+    checkoutLoading=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://checkout.razorpay.com/v1/checkout.js';s.async=true;s.onload=resolve;s.onerror=()=>reject(new Error('Could not load secure Razorpay checkout'));document.head.appendChild(s)});
     return checkoutLoading;
   }
   async function createOrder(assetId){
@@ -53,7 +53,7 @@
       const s=await session();
       if(!s?.user){location.href=`login.html?returnTo=${encodeURIComponent(location.pathname+location.search)}`;return}
       const cfg=await loadConfig();
-      if(!cfg.enabled){return;}
+      if(!cfg.enabled)throw new Error(cfg.error||'Razorpay payments are not enabled yet. Please configure the Razorpay credentials in Supabase.');
       const order=await createOrder(assetId);
       if(order.alreadyPaid){location.href='dashboard.html';return}
       await loadRazorpay();
@@ -99,15 +99,11 @@
   async function captureClick(event){
     const purchase=event.target.closest?.('[data-purchase-asset]');
     if(purchase){
-      const cfg=await loadConfig();
-      if(!cfg.enabled)return;
       event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
       await openCheckout(purchase.dataset.purchaseAsset);return;
     }
     const download=event.target.closest?.('[data-download-asset]');
     if(download){
-      const cfg=await loadConfig();
-      if(!cfg.enabled)return;
       event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
       await openDownload(download.dataset.downloadAsset);
     }

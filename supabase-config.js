@@ -58,3 +58,14 @@ window.STAR_VISUALS_SUPABASE = {
     init();
   }
 })();
+
+/* STAR VISUALS — shared visual polish loader.
+   Presentation only; no business logic or payment/auth behavior is changed. */
+(function loadVisualPolish(){
+  if (document.querySelector('link[data-star-visual-polish]')) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'visual-polish.css?v=20261006-1';
+  link.dataset.starVisualPolish = '1';
+  document.head.appendChild(link);
+})();

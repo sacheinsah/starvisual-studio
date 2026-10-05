@@ -1,0 +1,108 @@
+/* STAR VISUALS — restrained cinematic visual polish
+   Presentation-only layer. Does not alter auth, assets, courses, admin, or payments. */
+
+/* Keep hero typography stable: no ghosting, trails, transforms, or infinite motion. */
+.portfolio-hero h1,
+.landing-hero h1,
+.hero h1,
+.portfolio-section-head h2,
+.section-heading h2,
+.contact h2,
+.portfolio-contact h2 {
+  animation: none !important;
+  transform: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+/* Remove continuous decorative motion that competes with content. */
+.marquee div,
+.floating-star,
+.live-dot {
+  animation: none !important;
+}
+
+/* Calm, consistent interaction timing. */
+.btn,
+.quiet-link,
+.desktop-nav a,
+.login-trigger,
+.social-pill,
+.portfolio-project,
+.portfolio-media video,
+.course-card,
+.course-icon,
+.course-action,
+.academy-card,
+.social-links a,
+.asset-card,
+.asset-button,
+.price-row,
+.video-shell,
+.reveal {
+  transition-duration: 180ms !important;
+  transition-timing-function: ease-out !important;
+}
+
+/* No dramatic scale/rotation/jump effects. */
+.portfolio-project:hover,
+.project:hover,
+.course-card:hover,
+.academy-card:hover,
+.social-pill:hover,
+.asset-card:hover {
+  transform: translateY(-2px) !important;
+}
+
+.portfolio-project:hover .portfolio-media video,
+.video-shell:hover video {
+  transform: none !important;
+  filter: brightness(.92) !important;
+}
+
+.course-card:hover .course-icon {
+  transform: none !important;
+}
+
+.course-card:hover:before {
+  transform: none !important;
+}
+
+/* Reveal sections gently instead of sliding in strongly. */
+.reveal {
+  opacity: 0;
+  transform: translateY(6px) !important;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none !important;
+}
+
+/* Keep mobile layouts stable and prevent animation-related overflow. */
+@media (max-width: 900px) {
+  .portfolio-project:hover,
+  .project:hover,
+  .course-card:hover,
+  .academy-card:hover,
+  .social-pill:hover,
+  .asset-card:hover {
+    transform: none !important;
+  }
+}
+
+/* Accessibility: decorative motion is fully disabled when requested. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

@@ -129,4 +129,13 @@
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+
+  // Admin payment controls are kept separate from the upload handler so the
+  // existing asset management logic is not replaced or duplicated.
+  function loadPurchaseAdmin(){
+    if(!location.pathname.toLowerCase().endsWith('/admin.html')&&!location.pathname.toLowerCase().endsWith('admin.html'))return;
+    if(document.querySelector('script[data-star-purchases]'))return;
+    const s=document.createElement('script');s.src='asset-purchases.js?v=20261005-upi-purchases-1';s.dataset.starPurchases='1';document.body.appendChild(s);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadPurchaseAdmin,{once:true});else loadPurchaseAdmin();
 })();

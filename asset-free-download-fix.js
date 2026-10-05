@@ -7,10 +7,16 @@
 
   function getId(button){
     return button?.dataset?.assetDownload
-      || button?.dataset?.downloadAsset
-      || button?.dataset?.assetId
-      || button?.closest('.asset-card-v2,[data-asset-id]')?.dataset?.assetId
-      || null;
+      ||button?.dataset?.downloadAsset
+      ||button?.dataset?.assetId
+      ||button?.closest('.asset-card-v2,[data-asset-id]')?.dataset?.assetId
+      ||null;
+  }
+
+  function catalogAsset(id){
+    const catalog=Array.isArray(window.STAR_VISUALS_ASSET_CATALOG)?window.STAR_VISUALS_ASSET_CATALOG:[];
+    return catalog.map(asset=>typeof window.normalizeAsset==='function'?window.normalizeAsset(asset):asset)
+      .find(asset=>String(asset.id)===String(id))||null;
   }
 
   async function session(){
@@ -19,20 +25,21 @@
     return (await db().auth.getSession()).data?.session||null;
   }
 
-  async function downloadFree(button){
+  async function downloadFree(button,knownAsset=null){
     if(!db()) return;
     const assetId=getId(button);
     if(!assetId) return;
 
-    const {data:asset,error:assetError}=await db()
-      .from('asset_library')
-      .select('id,name,access_type,published,file_url,external_download_url')
-      .eq('id',assetId)
-      .maybeSingle();
+    let asset=knownAsset;
+    if(!asset){
+      const result=await db().from('asset_library')
+        .select('id,name,access_type,published,file_url,external_download_url')
+        .eq('id',assetId)
+        .maybeSingle();
+      asset=result.data;
+      if(result.error||!asset) return;
+    }
 
-    if(assetError||!asset) return;
-
-    // Never interfere with premium purchases/downloads.
     if(String(asset.access_type||'').toLowerCase()!=='free') return;
 
     const current=await session();
@@ -41,7 +48,7 @@
       return;
     }
 
-    const {data,result,error}=await db().rpc('record_asset_download',{p_asset_id:asset.id});
+    const {data,error}=await db().rpc('record_asset_download',{p_asset_id:asset.id});
     if(error){
       console.error('Free asset download failed:',error);
       if(typeof window.toast==='function') window.toast(error.message||'This free asset could not be downloaded.');
@@ -49,7 +56,7 @@
       return;
     }
 
-    const target=data?.file_url||result?.file_url||asset.external_download_url||asset.file_url;
+    const target=data?.file_url||asset.external_download_url||asset.file_url;
     if(!target){
       if(typeof window.toast==='function') window.toast('The asset download is not configured yet.');
       return;
@@ -62,23 +69,22 @@
     if(window.__starVisualsFreeDownloadFixWired)return;
     window.__starVisualsFreeDownloadFixWired=true;
 
-    document.addEventListener('click',async event=>{
+    // Use the already-rendered catalog synchronously so the existing delegated
+    // download handler cannot run first. Database work happens only after the
+    // event has been stopped.
+    document.addEventListener('click',event=>{
       const button=event.target.closest('[data-asset-download],[data-download-asset]');
       if(!button)return;
 
       const assetId=getId(button);
       if(!assetId)return;
 
-      // Check the asset before allowing the older delegated download/premium handler to run.
-      const {data:asset}=await db()?.from('asset_library')
-        .select('access_type')
-        .eq('id',assetId)
-        .maybeSingle() || {data:null};
+      const asset=catalogAsset(assetId);
       if(!asset||String(asset.access_type||'').toLowerCase()!=='free')return;
 
       event.preventDefault();
       event.stopImmediatePropagation();
-      await downloadFree(button);
+      void downloadFree(button,asset);
     },true);
   }
 

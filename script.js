@@ -1112,7 +1112,7 @@ function setupAdminAssetLibrary(){
       };
       if(!payload.name||!payload.category){throw new Error('Asset name and category are required.');}
       if(!payload.file_url&&!payload.external_download_url){throw new Error('Add an asset file or a trusted external download link.');}
-      if(payload.access_type==='premium'&&payload.external_download_url){throw new Error('Premium assets must use private Supabase Storage. Do not attach a public external download URL.');}
+      
       if(payload.access_type==='premium'&&payload.file_url&&!getStoragePath(payload.file_url)){throw new Error('Premium assets must use a private Supabase Storage file path.');}
       if(!ASSET_LIBRARY_CATEGORIES.includes(payload.category))throw new Error('Choose a valid Asset Library category.');
       const result=id?await db.from('asset_library').update(payload).eq('id',id).select('id').single():await db.from('asset_library').insert(payload).select('id').single();

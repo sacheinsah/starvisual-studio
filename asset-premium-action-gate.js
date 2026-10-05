@@ -33,8 +33,8 @@
     return paidPromise;
   }
 
-  function assetIdFromButton(button){
-    return button?.dataset.assetDownload||button?.dataset.assetOpen||button?.closest('.asset-card-v2')?.querySelector('[data-asset-download]')?.dataset.assetDownload||null;
+  function assetIdFromCard(card){
+    return card?.querySelector('[data-asset-download]')?.dataset.assetDownload||card?.querySelector('[data-asset-open]')?.dataset.assetOpen||null;
   }
   function assetFromId(id){
     return (window.STAR_VISUALS_ASSET_CATALOG||[]).find(a=>String(a.id)===String(id))||null;
@@ -43,17 +43,20 @@
 
   async function updateCard(card){
     if(!card?.classList.contains('premium'))return;
-    const oldDownload=card.querySelector('[data-asset-download]');
-    const id=assetIdFromButton(oldDownload||card.querySelector('[data-asset-open]'));
+    const id=assetIdFromCard(card);
     if(!id)return;
     const asset=assetFromId(id);
     if(!asset)return;
     const paid=(await loadPaidIds()).has(String(id));
     const host=actionHost(card);if(!host)return;
+    const existing=host.querySelector('[data-purchase-asset],[data-download-asset],[data-asset-download]');
+    const shouldDownload=paid;
+    if(shouldDownload&&existing?.matches('[data-download-asset]'))return;
+    if(!shouldDownload&&existing?.matches('[data-purchase-asset]'))return;
     host.querySelectorAll('[data-purchase-asset],[data-download-asset],[data-asset-download]').forEach(el=>el.remove());
     const button=document.createElement('button');
     button.type='button';button.className='outline-btn';
-    if(paid){button.dataset.downloadAsset=String(id);button.textContent='Download';button.setAttribute('aria-label',`Download ${asset.name}`);}
+    if(shouldDownload){button.dataset.downloadAsset=String(id);button.textContent='Download';button.setAttribute('aria-label',`Download ${asset.name}`);}
     else{button.dataset.purchaseAsset=String(id);button.textContent=`Purchase ${money(asset.price)}`;button.setAttribute('aria-label',`Purchase ${asset.name} for ${money(asset.price)}`);}
     host.appendChild(button);
   }
@@ -67,16 +70,19 @@
   function updateDetail(){
     const modal=document.getElementById('assetDetailModal');
     if(!modal?.classList.contains('open'))return;
-    const button=modal.querySelector('[data-asset-download]');
+    const button=modal.querySelector('[data-asset-download],[data-purchase-asset],[data-download-asset]');
     if(!button)return;
-    const id=button.dataset.assetDownload;
+    const id=button.dataset.assetDownload||button.dataset.purchaseAsset||button.closest('[data-asset-open]')?.dataset.assetOpen;
     const asset=assetFromId(id);if(!asset||asset.access_type!=='premium')return;
     loadPaidIds().then(ids=>{
       if(!button.isConnected)return;
+      const wantsDownload=ids.has(String(id));
+      if(wantsDownload&&button.matches('[data-download-asset]'))return;
+      if(!wantsDownload&&button.matches('[data-purchase-asset]'))return;
       const replacement=button.cloneNode(false);
       replacement.className=button.className;
-      replacement.textContent=ids.has(String(id))?'Download':`Purchase ${money(asset.price)}`;
-      if(ids.has(String(id)))replacement.dataset.downloadAsset=String(id);
+      replacement.textContent=wantsDownload?'Download':`Purchase ${money(asset.price)}`;
+      if(wantsDownload)replacement.dataset.downloadAsset=String(id);
       else replacement.dataset.purchaseAsset=String(id);
       button.replaceWith(replacement);
     });
@@ -90,10 +96,7 @@
       for(const m of mutations){
         if(m.type==='childList'&&m.addedNodes.length){relevant=true;break;}
       }
-      if(relevant){
-        updateCards();
-        updateDetail();
-      }
+      if(relevant){updateCards();updateDetail();}
     });
     observer.observe(document.body,{childList:true,subtree:true});
     updateCards();
